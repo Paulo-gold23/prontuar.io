@@ -5,6 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Recepção — formular.IO</title>
+    <meta name="description" content="Painel de Recepção do formular.IO. Cadastre pacientes, gerencie a fila de espera de consultas e acompanhe status." />
+    <meta property="og:title" content="Recepção — formular.IO" />
+    <meta property="og:description" content="Painel de Recepção. Cadastre pacientes, gerencie a fila de espera de consultas." />
+    <meta property="og:type" content="website" />
     <!-- Reutilizando estilos e scripts do projeto -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -13,6 +17,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <script src="auth-guard.js"></script>
     <script src="dark-mode.js"></script>
+    <script src="js/ui/canvas-signature.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -79,6 +84,8 @@
             border: 1px solid #60a5fa;
             animation: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
+        
+        /* Dark Mode signature inversion disabled - signatures are always black on white */
     </style>
 </head>
 
@@ -87,14 +94,26 @@
     <!-- Navbar -->
     <nav class="bg-white border-b border-slate-200 sticky top-0 z-20">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <div class="flex items-center gap-3">
-                    <div class="p-1.5 bg-indigo-600 text-white rounded-lg">
+            <div class="flex justify-between h-16 relative">
+                
+                <!-- Hamburger Button (Mobile Only) -->
+                <button onclick="toggleMobileSidebar(true)" class="sm:hidden p-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all self-center" title="Abrir Menu">
+                    <i class="ph-bold ph-list text-2xl"></i>
+                </button>
+
+                <!-- Logo/Title (Centered on mobile, Left on desktop) -->
+                <div class="flex items-center gap-3 absolute left-1/2 -translate-x-1/2 h-full sm:static sm:left-auto sm:translate-x-0">
+                    <div class="p-1.5 bg-emerald-600 text-white rounded-lg">
                         <i class="ph-bold ph-user-list text-xl"></i>
                     </div>
-                    <span class="font-bold text-xl text-slate-800">Recepção</span>
+                    <span class="font-bold text-xl text-slate-800 dark:text-white">Recepção</span>
                 </div>
-                <div class="flex items-center gap-2 sm:gap-4">
+
+                <!-- Spacer for centering on mobile -->
+                <div class="w-10 h-10 sm:hidden"></div>
+
+                <!-- Desktop Menu -->
+                <div class="hidden sm:flex items-center gap-2 sm:gap-4">
                     <a href="medico-dashboard.html"
                         class="text-xs sm:text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg transition-colors flex items-center gap-1.5 sm:gap-2 whitespace-nowrap">
                         <i class="ph-bold ph-stethoscope text-base sm:text-lg"></i> <span>Área Médica</span>
@@ -107,11 +126,82 @@
                     <button onclick="logoutSecretaria()"
                         class="text-sm text-rose-500 hover:text-rose-700 font-medium">Sair</button>
                 </div>
+
             </div>
         </div>
     </nav>
 
+    <!-- Mobile Sidebar Overlay -->
+    <div id="mobile-sidebar-overlay" onclick="toggleMobileSidebar(false)" class="fixed inset-0 z-[990] bg-slate-900/40 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 ease-in-out"></div>
+
+    <!-- Mobile Sidebar -->
+    <div id="mobile-sidebar" class="fixed inset-y-0 left-0 z-[995] w-72 bg-white dark:bg-slate-900 shadow-2xl transform -translate-x-full transition-transform duration-300 ease-in-out flex flex-col sm:hidden">
+        <!-- Top Bar -->
+        <div class="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-950/20">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center text-white shadow-md shadow-emerald-200">
+                    <i class="ph-bold ph-user-list text-lg"></i>
+                </div>
+                <div>
+                    <span class="font-extrabold text-slate-900 dark:text-white text-base">prontuar.IO</span>
+                    <p class="text-[8px] uppercase tracking-[0.1em] font-bold text-emerald-600">Recepção</p>
+                </div>
+            </div>
+            <button onclick="toggleMobileSidebar(false)" class="p-2 bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl transition-all" title="Fechar Menu">
+                <i class="ph-bold ph-x text-lg"></i>
+            </button>
+        </div>
+
+        <!-- Content / Links -->
+        <div class="flex-1 p-6 space-y-6 overflow-y-auto">
+            <!-- Info Conexão -->
+            <div class="pb-4 border-b border-slate-100 dark:border-slate-800 flex flex-col">
+                <span class="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">Setor Conectado</span>
+                <span class="text-sm font-bold text-slate-900 dark:text-white mt-1">Equipe de Recepção</span>
+            </div>
+
+            <!-- Links -->
+            <div class="space-y-3">
+                <a href="medico-dashboard.html" class="w-full flex items-center gap-3 px-4 py-3.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition-all text-sm shadow-md">
+                    <i class="ph-bold ph-stethoscope text-xl"></i>
+                    <span>Área Médica</span>
+                </a>
+                
+                <button id="theme-toggle" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition-all text-sm font-bold shadow-sm">
+                    <i class="ph-bold ph-moon text-xl"></i>
+                    <span>Escolha o Tema</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Footer Action (Logout) -->
+        <div class="p-6 border-t border-slate-100 dark:border-slate-800">
+            <button onclick="logoutSecretaria()" class="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 font-bold rounded-xl hover:bg-rose-100 transition-all text-sm">
+                <i class="ph-bold ph-sign-out text-lg"></i>
+                <span>Encerrar Sessão</span>
+            </button>
+        </div>
+    </div>
+
     <script>
+        // Toggle Mobile Sidebar
+        window.toggleMobileSidebar = function(open) {
+            const sidebar = document.getElementById("mobile-sidebar");
+            const overlay = document.getElementById("mobile-sidebar-overlay");
+            if (!sidebar || !overlay) return;
+            if (open) {
+                sidebar.classList.remove("-translate-x-full");
+                sidebar.classList.add("translate-x-0");
+                overlay.classList.remove("opacity-0", "pointer-events-none");
+                overlay.classList.add("opacity-100", "pointer-events-auto");
+            } else {
+                sidebar.classList.remove("translate-x-0");
+                sidebar.classList.add("-translate-x-full");
+                overlay.classList.remove("opacity-100", "pointer-events-auto");
+                overlay.classList.add("opacity-0", "pointer-events-none");
+            }
+        };
+
         // Trava de segurança da Secretária
         const secretariaAtiva = localStorage.getItem('secretaria_ativa');
         if (!secretariaAtiva) {
@@ -155,7 +245,7 @@
             <div class="md:col-span-1 relative z-30">
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sticky top-24">
                     <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                        <i class="ph-fill ph-plus-circle text-indigo-600"></i> Novo Paciente
+                        <i class="ph-fill ph-plus-circle text-emerald-600"></i> Novo Paciente
                     </h2>
 
                     <form id="formCadastro" class="space-y-4">
@@ -166,7 +256,7 @@
                             <label for="nome" class="block text-sm font-semibold text-slate-700 mb-1">Nome Completo
                                 <span class="text-rose-500">*</span></label>
                             <input type="text" id="nome" name="nome" required placeholder="Ex: João da Silva"
-                                class="w-full rounded-xl border-slate-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-2.5 px-3 border transition-all text-slate-800 bg-slate-50 focus:bg-white hover:border-indigo-300">
+                                class="w-full rounded-xl border-slate-200 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm py-2.5 px-3 border transition-all text-slate-800 bg-slate-50 focus:bg-white hover:border-emerald-300">
                         </div>
 
                         <!-- Data Nascimento e Sexo -->
@@ -177,24 +267,24 @@
                                         class="text-rose-500">*</span></label>
                                 <input type="text" id="data_nascimento" name="data_nascimento" required
                                     placeholder="DD/MM/AAAA" maxlength="10" inputmode="numeric"
-                                    class="w-full rounded-xl border-slate-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-2.5 px-3 border transition-all text-slate-800 bg-slate-50 focus:bg-white hover:border-indigo-300">
+                                    class="w-full rounded-xl border-slate-200 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm py-2.5 px-3 border transition-all text-slate-800 bg-slate-50 focus:bg-white hover:border-emerald-300">
                             </div>
 
                             <!-- Custom Select: Sexo -->
                             <div class="relative custom-select-container" id="select-sexo">
                                 <label class="block text-sm font-semibold text-slate-700 mb-1">Sexo</label>
                                 <button type="button"
-                                    class="custom-select-trigger w-full bg-slate-50 border border-slate-200 text-slate-800 py-2.5 px-3 rounded-xl text-left shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 flex justify-between items-center hover:bg-white">
+                                    class="custom-select-trigger w-full bg-slate-50 border border-slate-200 text-slate-800 py-2.5 px-3 rounded-xl text-left shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 flex justify-between items-center hover:bg-white">
                                     <span class="selected-text text-slate-400 text-sm">Selecione</span>
                                     <i class="ph-bold ph-caret-down text-slate-400"></i>
                                 </button>
                                 <div
                                     class="custom-options hidden absolute z-50 mt-1 w-full bg-white shadow-xl rounded-xl border border-slate-100 max-h-60 overflow-auto py-1 animate-fade-in-down origin-top">
-                                    <div class="option p-2 hover:bg-indigo-50 cursor-pointer text-sm" data-value="M">
+                                    <div class="option p-2 hover:bg-emerald-50 cursor-pointer text-sm" data-value="M">
                                         Masculino</div>
-                                    <div class="option p-2 hover:bg-indigo-50 cursor-pointer text-sm" data-value="F">
+                                    <div class="option p-2 hover:bg-emerald-50 cursor-pointer text-sm" data-value="F">
                                         Feminino</div>
-                                    <div class="option p-2 hover:bg-indigo-50 cursor-pointer text-sm" data-value="O">
+                                    <div class="option p-2 hover:bg-emerald-50 cursor-pointer text-sm" data-value="O">
                                         Outro</div>
                                 </div>
                                 <input type="hidden" name="sexo" id="sexo">
@@ -208,30 +298,32 @@
                                     <span class="text-rose-500">*</span></label>
                                 <input type="tel" id="telefone" name="telefone" required placeholder="(99) 99999-9999"
                                     maxlength="15"
-                                    class="w-full rounded-xl border-slate-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-2.5 px-3 border transition-all text-slate-800 bg-slate-50 focus:bg-white hover:border-indigo-300">
+                                    class="w-full rounded-xl border-slate-200 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm py-2.5 px-3 border transition-all text-slate-800 bg-slate-50 focus:bg-white hover:border-emerald-300">
                             </div>
 
                             <!-- Custom Select: Convênio -->
                             <div class="relative custom-select-container" id="select-convenio">
                                 <label class="block text-sm font-semibold text-slate-700 mb-1">Convênio</label>
                                 <button type="button"
-                                    class="custom-select-trigger w-full bg-slate-50 border border-slate-200 text-slate-800 py-2.5 px-3 rounded-xl text-left shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 flex justify-between items-center hover:bg-white">
+                                    class="custom-select-trigger w-full bg-slate-50 border border-slate-200 text-slate-800 py-2.5 px-3 rounded-xl text-left shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 flex justify-between items-center hover:bg-white">
                                     <span class="selected-text text-slate-400 text-sm">Selecione</span>
                                     <i class="ph-bold ph-caret-down text-slate-400"></i>
                                 </button>
                                 <div
                                     class="custom-options hidden absolute z-50 mt-1 w-full bg-white shadow-xl rounded-xl border border-slate-100 max-h-60 overflow-auto py-1 animate-fade-in-down origin-top">
-                                    <div class="option p-2 hover:bg-indigo-50 cursor-pointer text-sm"
+                                    <div class="option p-2 hover:bg-emerald-50 cursor-pointer text-sm"
                                         data-value="Particular">Particular</div>
-                                    <div class="option p-2 hover:bg-indigo-50 cursor-pointer text-sm"
+                                    <div class="option p-2 hover:bg-emerald-50 cursor-pointer text-sm"
                                         data-value="Unimed">Unimed</div>
-                                    <div class="option p-2 hover:bg-indigo-50 cursor-pointer text-sm"
+                                    <div class="option p-2 hover:bg-emerald-50 cursor-pointer text-sm"
                                         data-value="Bradesco Saúde">Bradesco Saúde</div>
-                                    <div class="option p-2 hover:bg-indigo-50 cursor-pointer text-sm"
+                                    <div class="option p-2 hover:bg-emerald-50 cursor-pointer text-sm"
                                         data-value="Medsênior">Medsênior</div>
-                                    <div class="option p-2 hover:bg-indigo-50 cursor-pointer text-sm" data-value="Samp">
+                                    <div class="option p-2 hover:bg-emerald-50 cursor-pointer text-sm"
+                                        data-value="Best Senior">Best Senior</div>
+                                    <div class="option p-2 hover:bg-emerald-50 cursor-pointer text-sm" data-value="Samp">
                                         Samp</div>
-                                    <div class="option p-2 hover:bg-indigo-50 cursor-pointer text-sm" data-value="SUS">
+                                    <div class="option p-2 hover:bg-emerald-50 cursor-pointer text-sm" data-value="SUS">
                                         SUS</div>
                                 </div>
                                 <input type="hidden" name="convenio" id="convenio">
@@ -244,12 +336,12 @@
                                 <label for="cidade"
                                     class="block text-sm font-semibold text-slate-700 mb-1">Cidade</label>
                                 <input type="text" id="cidade" name="cidade" placeholder="Ex: Vitória"
-                                    class="w-full rounded-xl border-slate-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-2.5 px-3 border transition-all text-slate-800 bg-slate-50 focus:bg-white hover:border-indigo-300">
+                                    class="w-full rounded-xl border-slate-200 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm py-2.5 px-3 border transition-all text-slate-800 bg-slate-50 focus:bg-white hover:border-emerald-300">
                             </div>
                             <div class="relative custom-select-container" id="select-uf">
                                 <label class="block text-sm font-semibold text-slate-700 mb-1">UF</label>
                                 <button type="button"
-                                    class="custom-select-trigger w-full bg-slate-50 border border-slate-200 text-slate-800 py-2.5 px-3 rounded-xl text-left shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 flex justify-between items-center hover:bg-white">
+                                    class="custom-select-trigger w-full bg-slate-50 border border-slate-200 text-slate-800 py-2.5 px-3 rounded-xl text-left shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 flex justify-between items-center hover:bg-white">
                                     <span class="selected-text text-slate-400 text-sm truncate">UF</span>
                                     <i class="ph-bold ph-caret-down text-slate-400"></i>
                                 </button>
@@ -265,11 +357,11 @@
                         <div class="pt-2">
                             <details class="group">
                                 <summary
-                                    class="flex items-center cursor-pointer text-sm text-indigo-600 font-semibold hover:text-indigo-700 outline-none select-none transition-colors p-2 rounded-lg hover:bg-indigo-50 w-full">
+                                    class="flex items-center cursor-pointer text-sm text-emerald-600 font-semibold hover:text-emerald-700 outline-none select-none transition-colors p-2 rounded-lg hover:bg-emerald-50 w-full">
                                     <i class="ph ph-caret-right mr-2 transition-transform group-open:rotate-90"></i>
                                     Dados do Responsável (Opcional)
                                 </summary>
-                                <div class="mt-2 space-y-3 pl-4 border-l-2 border-indigo-100 ml-2 animate-fade-in-down">
+                                <div class="mt-2 space-y-3 pl-4 border-l-2 border-emerald-100 ml-2 animate-fade-in-down">
                                     <div>
                                         <label for="responsavel_nome"
                                             class="block text-xs font-medium text-slate-700 mb-1">Nome do
@@ -290,7 +382,7 @@
                         <div id="statusCadastro" class="text-sm font-medium text-center min-h-[24px]"></div>
 
                         <button type="submit"
-                            class="w-full py-2.5 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all active:scale-95">
+                            class="w-full py-2.5 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all active:scale-95">
                             Cadastrar e Enviar para Fila
                         </button>
                     </form>
@@ -304,11 +396,11 @@
                     <div class="px-6 py-5">
                       <div class="flex justify-between items-center mb-4">
                         <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                            <i class="ph-bold ph-users text-indigo-500"></i>
+                            <i class="ph-bold ph-users text-emerald-500"></i>
                             Base de Pacientes / Fila
                         </h2>
                         <button onclick="carregarFila()"
-                            class="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition-colors">
+                            class="text-xs font-bold text-emerald-600 hover:text-emerald-800 flex items-center gap-1 transition-colors">
                             <i class="ph-bold ph-arrows-clockwise"></i> Atualizar
                         </button>
                       </div>
@@ -317,7 +409,7 @@
                         <div class="relative flex-1">
                           <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
                           <input id="searchPacienteRecepcao" type="text" placeholder="Buscar por nome ou convênio..."
-                            class="w-full pl-9 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:bg-white transition-all"
+                            class="w-full pl-9 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-400 focus:bg-white transition-all"
                             oninput="filtrarLista()">
                           <button id="searchClearRecepcao" onclick="limparBusca()" class="hidden absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 bg-slate-200 hover:bg-slate-300 rounded-full flex items-center justify-center transition-all">
                             <i class="ph-bold ph-x text-[10px] text-slate-600"></i>
@@ -325,11 +417,11 @@
                         </div>
                         <div class="flex gap-1.5">
                           <button onclick="setFiltroStatus('todos', this)" data-filtro="todos"
-                            class="filtro-status-btn active px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg bg-indigo-600 text-white border border-indigo-600 whitespace-nowrap transition-all">
+                            class="filtro-status-btn active px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg bg-emerald-600 text-white border border-emerald-600 whitespace-nowrap transition-all">
                             Todos
                           </button>
                           <button onclick="setFiltroStatus('cadastrado', this)" data-filtro="cadastrado"
-                            class="filtro-status-btn px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg bg-white text-slate-500 border border-slate-200 hover:border-indigo-300 hover:text-indigo-600 whitespace-nowrap transition-all">
+                            class="filtro-status-btn px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg bg-white text-slate-500 border border-slate-200 hover:border-emerald-300 hover:text-emerald-600 whitespace-nowrap transition-all">
                             Ativos
                           </button>
                           <button onclick="setFiltroStatus('finalizado', this)" data-filtro="finalizado"
@@ -380,8 +472,8 @@
         <div class="relative w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-fade-in-down transform scale-95 opacity-0 transition-all duration-300">
             <!-- Header do Perfil -->
             <div class="px-6 py-4 flex items-center gap-4 bg-slate-50 border-b border-slate-100">
-                <div class="w-12 h-12 rounded-full bg-indigo-100 border border-indigo-200 flex items-center justify-center flex-shrink-0">
-                    <i class="ph-bold ph-user text-indigo-600 text-xl"></i>
+                <div class="w-12 h-12 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center flex-shrink-0">
+                    <i class="ph-bold ph-user text-emerald-600 text-xl"></i>
                 </div>
                 <div class="flex-1">
                     <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Perfil do Paciente</p>
@@ -397,12 +489,12 @@
                 
                 <!-- Info Básica (Top) -->
                 <div class="grid grid-cols-3 gap-4">
-                    <div class="bg-indigo-50/50 border border-indigo-100/50 p-3 rounded-xl">
-                        <span class="text-[10px] font-bold text-indigo-400 uppercase tracking-wider block mb-1">Chegada</span>
+                    <div class="bg-emerald-50/50 border border-emerald-100/50 p-3 rounded-xl">
+                        <span class="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block mb-1">Chegada</span>
                         <span class="text-sm font-semibold text-slate-700" id="modal-chegada">-</span>
                     </div>
-                    <div class="bg-indigo-50/50 border border-indigo-100/50 p-3 rounded-xl">
-                        <span class="text-[10px] font-bold text-indigo-400 uppercase tracking-wider block mb-1">Convênio</span>
+                    <div class="bg-emerald-50/50 border border-emerald-100/50 p-3 rounded-xl">
+                        <span class="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block mb-1">Convênio</span>
                         <span class="text-sm font-semibold text-slate-700" id="modal-convenio">-</span>
                     </div>
                     <div class="bg-slate-50 border border-slate-100 p-3 rounded-xl overflow-hidden">
@@ -414,7 +506,7 @@
                 <!-- Seção Anamnese -->
                 <div class="border border-slate-200 rounded-xl overflow-hidden mt-4">
                     <div class="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
-                        <h4 class="font-bold text-slate-700 text-sm flex items-center gap-2"><i class="ph-bold ph-clipboard-text text-indigo-500"></i> Anamnese Inicial</h4>
+                        <h4 class="font-bold text-slate-700 text-sm flex items-center gap-2"><i class="ph-bold ph-clipboard-text text-emerald-500"></i> Anamnese Inicial</h4>
                         <span id="docSecAnamneseStatus" class="px-2 py-1 bg-slate-200 text-slate-600 text-[10px] font-bold rounded-md tracking-wider">CARREGANDO...</span>
                     </div>
                     <div id="docSecAnamneseContent" class="p-4 bg-white text-sm text-slate-600 space-y-3">
@@ -447,7 +539,7 @@
                     <i class="ph-bold ph-trash"></i> Excluir
                 </button>
                 <div class="flex gap-2">
-                  <button type="button" id="btnEditarPacienteModal" onclick="abrirEdicaoPaciente()" class="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 rounded-xl text-sm font-bold transition-all">
+                  <button type="button" id="btnEditarPacienteModal" onclick="abrirEdicaoPaciente()" class="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-xl text-sm font-bold transition-all">
                       <i class="ph-bold ph-pencil"></i> Editar
                   </button>
                   <button type="button" onclick="fecharModal()" class="flex items-center gap-2 px-6 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-sm font-bold transition-all shadow-md">
@@ -459,44 +551,51 @@
     </div>
 
     <!-- Modal Checklist Anamnese (Rico) -->
-    <div id="modalChecklistAnamnese" role="dialog" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div id="modalChecklistAnamnese" role="dialog" class="hidden fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4">
         <div class="fixed inset-0 bg-slate-800/40 backdrop-blur-sm"></div>
-        <div class="relative w-full max-w-2xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh] animate-fade-in-down">
-            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-indigo-50">
-                <h3 class="text-lg font-bold text-indigo-900 flex items-center gap-2">
-                    <i class="ph-bold ph-heartbeat text-indigo-600"></i> Questionário de Saúde Pré-Clínico
-                </h3>
-                <button type="button" onclick="fecharModalAnamnese()" class="text-slate-400 hover:text-slate-600 transition-colors">
+        <div class="relative w-full sm:max-w-2xl bg-white sm:rounded-2xl rounded-t-2xl shadow-xl overflow-hidden flex flex-col" style="max-height: 95dvh; max-height: 95vh;">
+            <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 flex flex-wrap justify-between items-center gap-2 bg-emerald-50">
+                <div class="flex items-center gap-2 min-w-0">
+                    <h3 class="text-base sm:text-lg font-bold text-emerald-900 flex items-center gap-2 truncate">
+                        <i class="ph-bold ph-heartbeat text-emerald-600 flex-shrink-0"></i>
+                        <span class="truncate">Questionário de Saúde</span>
+                    </h3>
+                    <!-- STEPPER A: indica que este é o passo 1 de 2 do fluxo de cadastro -->
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 flex-shrink-0">
+                        <i class="ph-bold ph-steps text-emerald-500"></i> Passo 1/2
+                    </span>
+                </div>
+                <button type="button" onclick="fecharModalAnamnese()" class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors flex-shrink-0" style="min-height: 36px; min-width: 36px;">
                     <i class="ph-bold ph-x text-lg"></i>
                 </button>
             </div>
             
-            <div class="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+            <div class="px-4 sm:px-6 py-4 sm:py-5 overflow-y-auto custom-scrollbar flex-1 space-y-5 sm:space-y-6">
                 <!-- Seção 1: Condições Sistêmicas -->
                 <div>
                     <h4 class="text-sm font-bold text-slate-800 mb-3 uppercase tracking-wide border-b pb-2 flex items-center gap-2"><i class="ph-bold ph-heart text-rose-500"></i> Condições Sistêmicas</h4>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <label class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 transition-colors">
-                            <div class="pt-0.5"><input type="checkbox" id="chk_diabetes" class="w-4 h-4 text-indigo-600 bg-white border-slate-300 rounded focus:ring-indigo-500"></div>
+                        <label class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-emerald-50 hover:border-emerald-200 transition-colors">
+                            <div class="pt-0.5"><input type="checkbox" id="chk_diabetes" class="w-4 h-4 text-emerald-600 bg-white border-slate-300 rounded focus:ring-emerald-500"></div>
                             <span class="text-sm text-slate-700 font-medium">Diabetes<br><span class="text-xs text-slate-500 font-normal">Tipo 1, Tipo 2 ou gestacional</span></span>
                         </label>
-                        <label class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 transition-colors">
-                            <div class="pt-0.5"><input type="checkbox" id="chk_hipertensao" class="w-4 h-4 text-indigo-600 bg-white border-slate-300 rounded focus:ring-indigo-500"></div>
+                        <label class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-emerald-50 hover:border-emerald-200 transition-colors">
+                            <div class="pt-0.5"><input type="checkbox" id="chk_hipertensao" class="w-4 h-4 text-emerald-600 bg-white border-slate-300 rounded focus:ring-emerald-500"></div>
                             <span class="text-sm text-slate-700 font-medium">Hipertensão Arterial<br><span class="text-xs text-slate-500 font-normal">Pressão alta controlada ou não</span></span>
                         </label>
-                        <label class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 transition-colors">
-                            <div class="pt-0.5"><input type="checkbox" id="chk_hipotireoidismo" class="w-4 h-4 text-indigo-600 bg-white border-slate-300 rounded focus:ring-indigo-500"></div>
+                        <label class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-emerald-50 hover:border-emerald-200 transition-colors">
+                            <div class="pt-0.5"><input type="checkbox" id="chk_hipotireoidismo" class="w-4 h-4 text-emerald-600 bg-white border-slate-300 rounded focus:ring-emerald-500"></div>
                             <span class="text-sm text-slate-700 font-medium">Hipotireoidismo<br><span class="text-xs text-slate-500 font-normal">Disfunção tireoidiana em tratamento</span></span>
                         </label>
-                        <label class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 transition-colors">
-                            <div class="pt-0.5"><input type="checkbox" id="chk_doencas_cronicas" class="w-4 h-4 text-indigo-600 bg-white border-slate-300 rounded focus:ring-indigo-500"></div>
+                        <label class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-emerald-50 hover:border-emerald-200 transition-colors">
+                            <div class="pt-0.5"><input type="checkbox" id="chk_doencas_cronicas" class="w-4 h-4 text-emerald-600 bg-white border-slate-300 rounded focus:ring-emerald-500"></div>
                             <span class="text-sm text-slate-700 font-medium">Outras Doenças Crônicas<br><span class="text-xs text-slate-500 font-normal">Cardiopatia, insuficiência renal, etc.</span></span>
                         </label>
-                        <label class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 transition-colors">
+                        <label class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-emerald-50 hover:border-emerald-200 transition-colors">
                             <div class="pt-0.5"><input type="checkbox" id="chk_marcapasso" class="w-4 h-4 text-amber-600 bg-white border-slate-300 rounded focus:ring-amber-500"></div>
                             <span class="text-sm text-slate-700 font-medium">Marcapasso / Implante Metálico<br><span class="text-xs text-slate-500 font-normal">Contraindicação para equipamentos eletromagnéticos</span></span>
                         </label>
-                        <label class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 transition-colors">
+                        <label class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-emerald-50 hover:border-emerald-200 transition-colors">
                             <div class="pt-0.5"><input type="checkbox" id="chk_imunossupressao" class="w-4 h-4 text-amber-600 bg-white border-slate-300 rounded focus:ring-amber-500"></div>
                             <span class="text-sm text-slate-700 font-medium">Imunossupressão<br><span class="text-xs text-slate-500 font-normal">Quimioterapia, corticoides, transplantado</span></span>
                         </label>
@@ -515,11 +614,11 @@
                             <div class="pt-0.5"><input type="checkbox" id="chk_disturbio_coagulacao" class="w-4 h-4 text-rose-600 bg-white border-slate-300 rounded focus:ring-rose-500"></div>
                             <span class="text-sm text-slate-700 font-medium">Distúrbio de Coagulação<br><span class="text-xs text-slate-500 font-normal">Hemofilia, uso de anticoagulantes (Marevan, Xarelto)</span></span>
                         </label>
-                        <label class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 transition-colors">
-                            <div class="pt-0.5"><input type="checkbox" id="chk_tabagismo_etilismo" class="w-4 h-4 text-indigo-600 bg-white border-slate-300 rounded focus:ring-indigo-500"></div>
+                        <label class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-emerald-50 hover:border-emerald-200 transition-colors">
+                            <div class="pt-0.5"><input type="checkbox" id="chk_tabagismo_etilismo" class="w-4 h-4 text-emerald-600 bg-white border-slate-300 rounded focus:ring-emerald-500"></div>
                             <span class="text-sm text-slate-700 font-medium">Tabagismo / Etilismo<br><span class="text-xs text-slate-500 font-normal">Uso atual ou pregresso</span></span>
                         </label>
-                        <label class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 transition-colors">
+                        <label class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-emerald-50 hover:border-emerald-200 transition-colors">
                             <div class="pt-0.5"><input type="checkbox" id="chk_gestante" class="w-4 h-4 text-pink-600 bg-white border-slate-300 rounded focus:ring-pink-500"></div>
                             <span class="text-sm text-slate-700 font-medium">Gestante / Lactante<br><span class="text-xs text-slate-500 font-normal">Contraindicação para diversos procedimentos</span></span>
                         </label>
@@ -530,28 +629,28 @@
                 <div>
                     <h4 class="text-sm font-bold text-slate-800 mb-3 uppercase tracking-wide border-b pb-2 flex items-center gap-2"><i class="ph-bold ph-bandaids text-emerald-500"></i> Histórico Dermatológico & Cirúrgico</h4>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <label class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 transition-colors">
-                            <div class="pt-0.5"><input type="checkbox" id="chk_cicatrizacao" class="w-4 h-4 text-indigo-600 bg-white border-slate-300 rounded focus:ring-indigo-500"></div>
+                        <label class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-emerald-50 hover:border-emerald-200 transition-colors">
+                            <div class="pt-0.5"><input type="checkbox" id="chk_cicatrizacao" class="w-4 h-4 text-emerald-600 bg-white border-slate-300 rounded focus:ring-emerald-500"></div>
                             <span class="text-sm text-slate-700 font-medium">Cicatrização Anormal<br><span class="text-xs text-slate-500 font-normal">Queloides ou cicatrizes hipertróficas</span></span>
                         </label>
-                        <label class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 transition-colors">
-                            <div class="pt-0.5"><input type="checkbox" id="chk_cirurgia_recente" class="w-4 h-4 text-indigo-600 bg-white border-slate-300 rounded focus:ring-indigo-500"></div>
+                        <label class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-emerald-50 hover:border-emerald-200 transition-colors">
+                            <div class="pt-0.5"><input type="checkbox" id="chk_cirurgia_recente" class="w-4 h-4 text-emerald-600 bg-white border-slate-300 rounded focus:ring-emerald-500"></div>
                             <span class="text-sm text-slate-700 font-medium">Cirurgia Recente (&lt;30 dias)<br><span class="text-xs text-slate-500 font-normal">Procedimento cirúrgico no último mês</span></span>
                         </label>
-                        <label class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 transition-colors">
-                            <div class="pt-0.5"><input type="checkbox" id="chk_herpes" class="w-4 h-4 text-indigo-600 bg-white border-slate-300 rounded focus:ring-indigo-500"></div>
+                        <label class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-emerald-50 hover:border-emerald-200 transition-colors">
+                            <div class="pt-0.5"><input type="checkbox" id="chk_herpes" class="w-4 h-4 text-emerald-600 bg-white border-slate-300 rounded focus:ring-emerald-500"></div>
                             <span class="text-sm text-slate-700 font-medium">Herpes Recorrente<br><span class="text-xs text-slate-500 font-normal">Labial ou genital com recidivas frequentes</span></span>
                         </label>
-                        <label class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 transition-colors">
-                            <div class="pt-0.5"><input type="checkbox" id="chk_historico_oncologico" class="w-4 h-4 text-indigo-600 bg-white border-slate-300 rounded focus:ring-indigo-500"></div>
+                        <label class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-emerald-50 hover:border-emerald-200 transition-colors">
+                            <div class="pt-0.5"><input type="checkbox" id="chk_historico_oncologico" class="w-4 h-4 text-emerald-600 bg-white border-slate-300 rounded focus:ring-emerald-500"></div>
                             <span class="text-sm text-slate-700 font-medium">Histórico Oncológico<br><span class="text-xs text-slate-500 font-normal">Câncer de pele ou outros neoplasias</span></span>
                         </label>
-                        <label class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 transition-colors">
-                            <div class="pt-0.5"><input type="checkbox" id="chk_ferida_mmii" class="w-4 h-4 text-indigo-600 bg-white border-slate-300 rounded focus:ring-indigo-500"></div>
+                        <label class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-emerald-50 hover:border-emerald-200 transition-colors">
+                            <div class="pt-0.5"><input type="checkbox" id="chk_ferida_mmii" class="w-4 h-4 text-emerald-600 bg-white border-slate-300 rounded focus:ring-emerald-500"></div>
                             <span class="text-sm text-slate-700 font-medium">Ferida em Membro Inferior<br><span class="text-xs text-slate-500 font-normal">Úlcera venosa, arterial ou neuropática</span></span>
                         </label>
-                        <label class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 transition-colors">
-                            <div class="pt-0.5"><input type="checkbox" id="chk_pele_sensivel" class="w-4 h-4 text-indigo-600 bg-white border-slate-300 rounded focus:ring-indigo-500"></div>
+                        <label class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-emerald-50 hover:border-emerald-200 transition-colors">
+                            <div class="pt-0.5"><input type="checkbox" id="chk_pele_sensivel" class="w-4 h-4 text-emerald-600 bg-white border-slate-300 rounded focus:ring-emerald-500"></div>
                             <span class="text-sm text-slate-700 font-medium">Pele Sensível / Reativa<br><span class="text-xs text-slate-500 font-normal">Rosácea, dermatite de contato, fotossensibilidade</span></span>
                         </label>
                     </div>
@@ -559,132 +658,314 @@
 
                 <!-- Seção 4: Detalhamento Clínico -->
                 <div>
-                    <h4 class="text-sm font-bold text-slate-800 mb-3 uppercase tracking-wide border-b pb-2 flex items-center gap-2"><i class="ph-bold ph-note-pencil text-indigo-500"></i> Detalhamento Clínico</h4>
+                    <h4 class="text-sm font-bold text-slate-800 mb-3 uppercase tracking-wide border-b pb-2 flex items-center gap-2"><i class="ph-bold ph-note-pencil text-emerald-500"></i> Detalhamento Clínico</h4>
                     <div class="space-y-4">
                         <div>
                             <label class="block text-xs font-bold text-slate-600 mb-1">Tipo de Pele (Fitzpatrick)</label>
                             <div class="flex flex-wrap gap-2" id="tipo_pele_group">
-                                <label class="tipo-pele-opt px-3 py-1.5 text-xs font-bold border border-slate-200 rounded-lg cursor-pointer bg-slate-50 hover:bg-indigo-50 hover:border-indigo-300 transition-all"><input type="radio" name="tipo_pele" value="I" class="hidden"> I - Muito clara</label>
-                                <label class="tipo-pele-opt px-3 py-1.5 text-xs font-bold border border-slate-200 rounded-lg cursor-pointer bg-slate-50 hover:bg-indigo-50 hover:border-indigo-300 transition-all"><input type="radio" name="tipo_pele" value="II" class="hidden"> II - Clara</label>
-                                <label class="tipo-pele-opt px-3 py-1.5 text-xs font-bold border border-slate-200 rounded-lg cursor-pointer bg-slate-50 hover:bg-indigo-50 hover:border-indigo-300 transition-all"><input type="radio" name="tipo_pele" value="III" class="hidden"> III - Morena clara</label>
-                                <label class="tipo-pele-opt px-3 py-1.5 text-xs font-bold border border-slate-200 rounded-lg cursor-pointer bg-slate-50 hover:bg-indigo-50 hover:border-indigo-300 transition-all"><input type="radio" name="tipo_pele" value="IV" class="hidden"> IV - Morena</label>
-                                <label class="tipo-pele-opt px-3 py-1.5 text-xs font-bold border border-slate-200 rounded-lg cursor-pointer bg-slate-50 hover:bg-indigo-50 hover:border-indigo-300 transition-all"><input type="radio" name="tipo_pele" value="V" class="hidden"> V - Escura</label>
-                                <label class="tipo-pele-opt px-3 py-1.5 text-xs font-bold border border-slate-200 rounded-lg cursor-pointer bg-slate-50 hover:bg-indigo-50 hover:border-indigo-300 transition-all"><input type="radio" name="tipo_pele" value="VI" class="hidden"> VI - Muito escura</label>
+                                <label class="tipo-pele-opt px-3 py-1.5 text-xs font-bold border border-slate-200 rounded-lg cursor-pointer bg-slate-50 hover:bg-emerald-50 hover:border-emerald-300 transition-all"><input type="radio" name="tipo_pele" value="I" class="hidden"> I - Muito clara</label>
+                                <label class="tipo-pele-opt px-3 py-1.5 text-xs font-bold border border-slate-200 rounded-lg cursor-pointer bg-slate-50 hover:bg-emerald-50 hover:border-emerald-300 transition-all"><input type="radio" name="tipo_pele" value="II" class="hidden"> II - Clara</label>
+                                <label class="tipo-pele-opt px-3 py-1.5 text-xs font-bold border border-slate-200 rounded-lg cursor-pointer bg-slate-50 hover:bg-emerald-50 hover:border-emerald-300 transition-all"><input type="radio" name="tipo_pele" value="III" class="hidden"> III - Morena clara</label>
+                                <label class="tipo-pele-opt px-3 py-1.5 text-xs font-bold border border-slate-200 rounded-lg cursor-pointer bg-slate-50 hover:bg-emerald-50 hover:border-emerald-300 transition-all"><input type="radio" name="tipo_pele" value="IV" class="hidden"> IV - Morena</label>
+                                <label class="tipo-pele-opt px-3 py-1.5 text-xs font-bold border border-slate-200 rounded-lg cursor-pointer bg-slate-50 hover:bg-emerald-50 hover:border-emerald-300 transition-all"><input type="radio" name="tipo_pele" value="V" class="hidden"> V - Escura</label>
+                                <label class="tipo-pele-opt px-3 py-1.5 text-xs font-bold border border-slate-200 rounded-lg cursor-pointer bg-slate-50 hover:bg-emerald-50 hover:border-emerald-300 transition-all"><input type="radio" name="tipo_pele" value="VI" class="hidden"> VI - Muito escura</label>
                             </div>
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-600 mb-1">Uso Contínuo de Medicações</label>
-                            <textarea id="txt_uso_continuo" rows="2" class="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 placeholder-slate-400" placeholder="Anticoagulantes, imunossupressores, isotretinoína, corticoides..."></textarea>
+                            <textarea id="txt_uso_continuo" rows="2" class="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400" placeholder="Anticoagulantes, imunossupressores, isotretinoína, corticoides..."></textarea>
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-600 mb-1">Cirurgias Anteriores / Internações</label>
-                            <textarea id="txt_cirurgias" rows="2" class="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 placeholder-slate-400" placeholder="Cirurgias recentes, reações anestésicas, internações..."></textarea>
+                            <textarea id="txt_cirurgias" rows="2" class="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400" placeholder="Cirurgias recentes, reações anestésicas, internações..."></textarea>
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-600 mb-1">Condições de Pele Prévias</label>
-                            <textarea id="txt_pele" rows="2" class="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 placeholder-slate-400" placeholder="Psoríase, dermatite, vitiligo, melasma, rosácea..."></textarea>
+                            <textarea id="txt_pele" rows="2" class="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400" placeholder="Psoríase, dermatite, vitiligo, melasma, rosácea..."></textarea>
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-600 mb-1">Histórico Familiar Relevante</label>
-                            <input type="text" id="txt_historico_familiar" class="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 placeholder-slate-400" placeholder="Câncer de pele na família, doenças autoimunes, queloides...">
+                            <input type="text" id="txt_historico_familiar" class="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400" placeholder="Câncer de pele na família, doenças autoimunes, queloides...">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-600 mb-1">Observações Adicionais</label>
-                            <textarea id="txt_observacoes" rows="2" class="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 placeholder-slate-400" placeholder="Qualquer informação relevante não coberta acima..."></textarea>
+                            <textarea id="txt_observacoes" rows="2" class="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400" placeholder="Qualquer informação relevante não coberta acima..."></textarea>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 rounded-b-2xl">
-                <button type="button" onclick="fecharModalAnamnese()" class="px-5 py-2 text-sm font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors">Cancelar</button>
-                <button type="button" onclick="avancarParaTermo()" class="px-5 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2">
-                    Avançar para Termo <i class="ph-bold ph-arrow-right"></i>
-                </button>
+            <!-- Footer com contador + botoes de acao -->
+            <!-- Mobile (<sm): empilha em coluna; Desktop (sm+): linha com espaçamento -->
+            <div class="px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex-shrink-0" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0.75rem));">
+
+                <!-- Desktop: linha única -->
+                <div class="hidden sm:flex justify-between items-center gap-3">
+                    <!-- SPRINT 3 · ITEM F: contador -->
+                    <span id="contador_condicoes_desktop" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-500 border border-slate-200 transition-all flex-shrink-0">
+                        <i class="ph-bold ph-list-checks"></i>
+                        <span id="contador_condicoes_texto_desktop">Nenhuma condição</span>
+                    </span>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="fecharModalAnamnese()" class="px-4 py-2 text-sm font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors" style="min-height: 40px;">Cancelar</button>
+                        <button type="button" onclick="avancarParaTermo()" class="px-5 py-2 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-sm transition-colors flex items-center gap-2" style="min-height: 40px;">
+                            Avançar para Termo <i class="ph-bold ph-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Mobile: empilhado -->
+                <div class="flex flex-col gap-2 sm:hidden">
+                    <!-- Contador em linha separada no mobile -->
+                    <span id="contador_condicoes_mobile" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-500 border border-slate-200 transition-all self-start">
+                        <i class="ph-bold ph-list-checks"></i>
+                        <span id="contador_condicoes_texto_mobile">Nenhuma condição marcada</span>
+                    </span>
+                    <div class="flex gap-2">
+                        <button type="button" onclick="fecharModalAnamnese()" class="flex-1 py-3 text-sm font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors" style="min-height: 48px;">Cancelar</button>
+                        <button type="button" onclick="avancarParaTermo()" class="flex-[2] py-3 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-sm transition-colors flex items-center justify-center gap-1.5" style="min-height: 48px;">
+                            Avançar <i class="ph-bold ph-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- ═══════════════════════════════════════════════════════
+         Modal Termo de Consentimento — Redesign mobile-first
+         Estrutura: Header fixo → Tabs (Ler|Assinar) → Conteúdo → Footer
+         ═══════════════════════════════════════════════════════ -->
+    <style>
+        /* ── Tab switcher ── */
+        #termo-tab-bar { display: flex; }
+        .termo-tab {
+            flex: 1; padding: 10px 8px; font-size: 13px; font-weight: 700;
+            border: none; background: transparent; cursor: pointer;
+            color: #94a3b8; border-bottom: 2px solid transparent;
+            transition: color .2s, border-color .2s;
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+        }
+        .termo-tab.active { color: #059669; border-bottom-color: #059669; }
+        .termo-tab-panel { display: none; flex: 1; overflow-y: auto; }
+        .termo-tab-panel.active { display: flex; flex-direction: column; }
+
+        /* ── Modo digital selecionado ── */
+        .sig-opt-btn { flex:1; padding: 10px 8px; border-radius: 12px; font-size: 12px;
+            font-weight: 700; border: 1.5px solid #e2e8f0; background: #fff;
+            color: #64748b; cursor: pointer; display: flex; align-items: center;
+            justify-content: center; gap: 6px; transition: all .2s;
+            -webkit-tap-highlight-color: transparent; }
+        .sig-opt-btn.selected { background: #ecfdf5; border-color: #6ee7b7; color: #065f46; }
+
+        /* ── Canvas zone ── */
+        #canvas-assinatura-wrap { border-radius: 16px; overflow: hidden; }
+
+        /* ── Toggle unificado ── */
+        #chk-termo-unified { display: none; }
+        #lbl-termo-unified {
+            display: flex; align-items: center; gap: 14px;
+            padding: 14px 16px; background: #f0fdf4;
+            border: 2px solid #86efac; border-radius: 16px;
+            cursor: pointer; -webkit-tap-highlight-color: transparent;
+            transition: background .2s, border-color .2s;
+        }
+        #lbl-termo-unified.checked { background: #dcfce7; border-color: #4ade80; }
+        #lbl-termo-unified .tgl-pill {
+            position: relative; display: inline-flex; align-items: center;
+            width: 52px; height: 28px; border-radius: 9999px;
+            background: #cbd5e1; transition: background .25s; flex-shrink: 0;
+        }
+        #lbl-termo-unified .tgl-knob {
+            position: absolute; left: 3px;
+            width: 22px; height: 22px; border-radius: 50%;
+            background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: transform .25s;
+        }
+        #lbl-termo-unified.checked .tgl-pill { background: #10b981; }
+        #lbl-termo-unified.checked .tgl-knob { transform: translateX(24px); }
+
+        /* ── Btn efetivar ── */
+        #btn-efetivar-unified {
+            width: 100%; padding: 16px; font-size: 16px; font-weight: 700;
+            color: white; background: #cbd5e1; border: none; border-radius: 16px;
+            cursor: not-allowed; display: flex; align-items: center; justify-content: center;
+            gap: 8px; transition: background .2s, box-shadow .2s;
+            -webkit-tap-highlight-color: transparent; min-height: 54px;
+        }
+        #btn-efetivar-unified.can-submit {
+            background: linear-gradient(135deg, #10b981, #059669);
+            box-shadow: 0 8px 20px rgba(16,185,129,0.35);
+            cursor: pointer;
+        }
+    </style>
+
     <!-- Modal Termo de Consentimento Gerado -->
-    <div id="modalTermoConsentimento" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-4">
-        <div class="fixed inset-0 bg-slate-800/40 backdrop-blur-sm"></div>
-        <div class="relative w-full max-w-3xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div id="modalTermoConsentimento" class="hidden fixed inset-0 z-[110] flex items-end sm:items-center justify-center">
+        <div class="fixed inset-0 bg-slate-800/40 backdrop-blur-sm" onclick="fecharModalTermo()"></div>
+        <div class="relative w-full sm:max-w-3xl bg-white dark:bg-slate-900 sm:rounded-2xl rounded-t-2xl shadow-xl flex flex-col" style="max-height: 95dvh; max-height: 95vh;">
             
-            <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-white">
-                <h3 class="text-xl font-bold border-l-4 border-emerald-500 pl-3 text-slate-800">Documento Formal: Termo de Consentimento</h3>
-                <button type="button" onclick="fecharModalTermo()" class="text-slate-400 hover:text-slate-600 transition-colors">
+            <!-- ── Header ── -->
+            <div class="px-4 sm:px-6 py-3 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-900 flex-shrink-0 rounded-t-2xl">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                        <i class="ph-bold ph-file-text text-emerald-600 text-base"></i>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-0.5">Passo 2 de 2</p>
+                        <h3 class="text-base font-bold text-slate-800 dark:text-slate-100 leading-tight">Termo de Consentimento</h3>
+                    </div>
+                </div>
+                <button type="button" onclick="fecharModalTermo()" class="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors flex-shrink-0" aria-label="Fechar">
                     <i class="ph-bold ph-x text-lg"></i>
                 </button>
             </div>
+
+            <!-- ── Tab Bar (visível apenas no mobile) ── -->
+            <div id="termo-tab-bar" class="sm:hidden flex-shrink-0 border-b border-slate-100 bg-white dark:bg-slate-900">
+                <button class="termo-tab active" id="tab-ler" onclick="termoSetTab('ler')">
+                    <i class="ph-bold ph-file-text"></i> Ler Termo
+                </button>
+                <button class="termo-tab" id="tab-assinar" onclick="termoSetTab('assinar')">
+                    <i class="ph-bold ph-pen-nib"></i> Assinar
+                </button>
+            </div>
             
-            <div id="termo-imprimir" class="p-8 overflow-y-auto custom-scrollbar flex-1 bg-white font-serif text-slate-800 text-sm leading-relaxed" style="max-height: 60vh; display: flex; flex-direction: column;">
-                <div class="text-center mb-8">
-                    <h2 class="text-2xl font-bold uppercase tracking-widest text-slate-900">Clínica Cicatrize</h2>
-                    <h3 class="font-bold mt-2 uppercase text-slate-700">TERMO DE CONSENTIMENTO LIVRE E ESCLARECIDO (TCLE)</h3>
-                </div>
-                
-                <p class="mb-4 text-justify">
-                    Eu, paciente em fase de admissão na <strong>Clínica Cicatrize</strong>, declaro para os devidos fins que fui esclarecido(a) de forma clara e objetiva sobre a natureza dos procedimentos estéticos, dermatológicos ou cirúrgicos a serem realizados.
-                </p>
-                <p class="mb-4 text-justify">
-                    <strong>1. ESCLARECIMENTOS GERAIS:</strong> Compreendo que a medicina não é uma ciência exata e que, apesar de toda técnica, empenho e diligência profissional, resultados exatos não podem ser garantidos. Riscos inerentes, infecções, assimetrias temporárias e processos de cicatrização variam de indivíduo para indivíduo.
-                </p>
-                <p class="mb-4 text-justify">
-                    <strong>2. VERACIDADE DAS INFORMAÇÕES:</strong> Declaro que todas as informações prestadas no Questionário de Saúde Pré-Clínico (Anamnese) são verdadeiras, não omitindo nenhum detalhe sobre alergias, uso de medicamentos, condições crônicas, cirurgias ou histórico de saúde. Entendo que a omissão pode resultar em complicações severas.
-                </p>
-                <p class="mb-4 text-justify">
-                    <strong>3. REGISTRO FOTOGRÁFICO:</strong> Autorizo o registro fotográfico (antes, durante e depois) de forma estritamente confidencial para fins de prontuário médico e acompanhamento da evolução clínica. Estas imagens não serão veiculadas publicamente sem meu consentimento adicional por escrito.
-                </p>
-                <p class="mb-4 text-justify">
-                    <strong>4. DEVERES DO PACIENTE:</strong> Comprometo-me a seguir rigorosamente todas as prescrições médicas, recomendações pré e pós-procedimento, e a comparecer aos retornos agendados, isentando a Clínica Cicatrize e seus profissionais de responsabilidade em caso de negligência de minha parte.
-                </p>
-                
-                <!-- Bloco de assinatura — preenchido dinamicamente via JS em avancarParaTermo() -->
-                <div id="bloco-assinatura-termo" style="margin-top: auto; padding-top: 48px;">
+            <!-- ══════════════════════════════════════════════════
+                 LAYOUT DESKTOP: duas colunas side-by-side
+                 LAYOUT MOBILE: duas abas empilhadas
+                 ══════════════════════════════════════════════════ -->
+            <div class="flex-1 overflow-hidden flex flex-col sm:flex-row min-h-0">
 
-                    <!-- Campos side by side -->
-                    <div style="display: flex; gap: 48px; align-items: flex-end;">
-
-                        <!-- Coluna Esquerda: Paciente -->
-                        <div style="flex: 1;">
-                            <p id="assinatura-nome-paciente" style="font-size: 11px; font-weight: 700; color: #0f172a; margin-bottom: 0;">&nbsp;</p>
-                            <div style="border-bottom: 1.5px solid #1e293b; width: 100%; margin-top: 36px; margin-bottom: 6px;"></div>
-                            <p style="font-size: 10px; color: #64748b; text-align: center;">Assinatura do(a) Paciente</p>
-                        </div>
-
-                        <!-- Coluna Direita: Clínica -->
-                        <div style="flex: 1;">
-                            <p style="font-size: 11px; font-weight: 700; color: #0f172a; margin-bottom: 0;">Clínica Cicatrize</p>
-                            <div style="border-bottom: 1.5px solid #1e293b; width: 100%; margin-top: 36px; margin-bottom: 6px;"></div>
-                            <p style="font-size: 10px; color: #64748b; text-align: center;">Responsável / Clínica</p>
-                        </div>
-
+            <!-- ── ABA / PAINEL 1: Documento ── -->
+            <div id="panel-ler" class="termo-tab-panel active sm:flex sm:flex-col flex-1 min-h-0 sm:border-r sm:border-slate-100">
+            <div id="termo-imprimir" class="p-5 sm:p-8 overflow-y-auto custom-scrollbar bg-white font-serif text-slate-800 text-sm leading-relaxed flex-1" style="-webkit-overflow-scrolling: touch;">
+                    <div class="text-center mb-6">
+                        <h2 class="text-xl sm:text-2xl font-bold uppercase tracking-widest text-slate-900">Clínica Cicatrize</h2>
+                        <h3 class="font-bold mt-2 uppercase text-slate-700 text-sm">TERMO DE CONSENTIMENTO LIVRE E ESCLARECIDO (TCLE)</h3>
                     </div>
-
-                    <!-- Data e Hora — linha separada abaixo dos campos -->
-                    <p id="assinatura-data-hora" style="margin-top: 14px; font-size: 10px; color: #64748b; text-align: right;">&nbsp;</p>
-
+                    <p class="mb-4 text-justify">
+                        Eu, paciente em fase de admissão na <strong>Clínica Cicatrize</strong>, declaro para os devidos fins que fui esclarecido(a) de forma clara e objetiva sobre a natureza dos procedimentos estéticos, dermatológicos ou cirúrgicos a serem realizados.
+                    </p>
+                    <p class="mb-4 text-justify">
+                        <strong>1. ESCLARECIMENTOS GERAIS:</strong> Compreendo que a medicina não é uma ciência exata e que, apesar de toda técnica, empenho e diligência profissional, resultados exatos não podem ser garantidos. Riscos inerentes, infecções, assimetrias temporárias e processos de cicatrização variam de indivíduo para indivíduo.
+                    </p>
+                    <p class="mb-4 text-justify">
+                        <strong>2. VERACIDADE DAS INFORMAÇÕES:</strong> Declaro que todas as informações prestadas no Questionário de Saúde Pré-Clínico (Anamnese) são verdadeiras, não omitindo nenhum detalhe sobre alergias, uso de medicamentos, condições crônicas, cirurgias ou histórico de saúde. Entendo que a omissão pode resultar em complicações severas.
+                    </p>
+                    <p class="mb-4 text-justify">
+                        <strong>3. REGISTRO FOTOGRÁFICO:</strong> Autorizo o registro fotográfico (antes, durante e depois) de forma estritamente confidencial para fins de prontuário médico e acompanhamento da evolução clínica. Estas imagens não serão veiculadas publicamente sem meu consentimento adicional por escrito.
+                    </p>
+                    <p class="mb-4 text-justify">
+                        <strong>4. DEVERES DO PACIENTE:</strong> Comprometo-me a seguir rigorosamente todas as prescrições médicas, recomendações pré e pós-procedimento, e a comparecer aos retornos agendados, isentando a Clínica Cicatrize e seus profissionais de responsabilidade em caso de negligência de minha parte.
+                    </p>
+                    <div id="bloco-assinatura-termo" style="margin-top: 48px; padding-top: 0;">
+                        <div style="display: flex; gap: 32px; align-items: flex-end;">
+                            <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+                                <p id="assinatura-nome-paciente" style="font-size: 11px; font-weight: 700; color: #1e293b; margin: 0 0 4px 0; text-align: center;">&nbsp;</p>
+                                <div id="assinatura-paciente-container" style="height: 70px; display: flex; align-items: center; justify-content: center; width: 100%; margin-bottom: 4px;">
+                                    <img id="assinatura-paciente-img" alt="Assinatura do Paciente" style="display: none; max-height: 70px; max-width: 100%; width: auto; object-fit: contain;" onerror="this.style.display='none';"/>
+                                </div>
+                                <div style="border-bottom: 1.5px solid #334155; width: 100%; margin-bottom: 4px;"></div>
+                                <p style="font-size: 10px; color: #64748b; text-align: center; margin: 0;">Assinatura do(a) Paciente</p>
+                            </div>
+                            <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+                                <p id="assinatura-nome-medico" style="font-size: 11px; font-weight: 700; color: #1e293b; margin: 0 0 2px 0; text-align: center;">Responsável Técnico</p>
+                                <p id="assinatura-crm-medico" style="font-size: 9px; color: #64748b; margin: 0 0 4px 0; text-align: center;">&nbsp;</p>
+                                <div id="assinatura-medico-container" style="height: 70px; display: flex; align-items: center; justify-content: center; width: 100%; margin-bottom: 4px;">
+                                    <img id="assinatura-medico-img" alt="Assinatura do Médico" style="display: none; max-height: 70px; max-width: 100%; width: auto; object-fit: contain;" onerror="this.style.display='none';"/>
+                                </div>
+                                <div style="border-bottom: 1.5px solid #334155; width: 100%; margin-bottom: 4px;"></div>
+                                <p style="font-size: 10px; color: #64748b; text-align: center; margin: 0;">Responsável / Clínica</p>
+                            </div>
+                        </div>
+                        <p id="assinatura-data-hora" style="margin-top: 12px; font-size: 10px; color: #64748b; text-align: right;">&nbsp;</p>
+                    </div>
                 </div>
             </div>
 
-            <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4">
-                <button type="button" onclick="imprimirTermo()" class="px-4 py-2 flex items-center gap-2 text-sm font-bold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors">
-                    <i class="ph-bold ph-printer"></i> Imprimir Documento
-                </button>
-                
-                <div class="flex items-center gap-4 w-full sm:w-auto">
-                    <label class="flex items-center gap-2 cursor-pointer p-2 bg-emerald-50 rounded-lg border border-emerald-200">
-                        <input type="checkbox" id="chk_termo_aceito" class="w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500 bg-white">
-                        <span class="text-sm font-bold text-emerald-800 whitespace-nowrap">Paciente concorda e assina virtualmente</span>
+            <!-- ── ABA / PAINEL 2: Assinatura ── -->
+            <div id="panel-assinar" class="termo-tab-panel sm:flex sm:flex-col sm:w-72 sm:min-w-64 flex-shrink-0 bg-slate-50 dark:bg-slate-950 min-h-0">
+                <div class="p-4 flex flex-col gap-4 overflow-y-auto flex-1">
+                    <div>
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Forma de Assinatura</p>
+                        <div class="flex gap-2">
+                            <button type="button" id="btn-opt-digital" onclick="setConsentMode('digital')" class="sig-opt-btn selected">
+                                <i class="ph-bold ph-pencil-line"></i> Digital
+                            </button>
+                            <button type="button" id="btn-opt-physical" onclick="setConsentMode('physical')" class="sig-opt-btn">
+                                <i class="ph-bold ph-printer"></i> Imprimir
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="canvas-assinatura-wrap" class="flex flex-col gap-2">
+                        <div class="flex items-center justify-between">
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Assinatura do Paciente</p>
+                            <button type="button" id="btn-limpar-canvas" class="text-xs text-rose-500 font-bold flex items-center gap-1">
+                                <i class="ph ph-arrow-counter-clockwise"></i> Limpar
+                            </button>
+                        </div>
+                        <div id="sig-canvas-zone" class="border-2 border-dashed border-slate-300 rounded-2xl bg-white overflow-hidden relative" style="height: 130px;">
+                            <canvas id="signature-canvas" class="w-full h-full cursor-crosshair" style="display: block; touch-action: none;"></canvas>
+                            <div id="sig-tap-hint" class="absolute inset-0 flex flex-col items-center justify-center gap-2 pointer-events-none sm:hidden">
+                                <i class="ph-bold ph-pen-nib text-slate-300 text-3xl"></i>
+                                <span class="text-xs font-bold text-slate-400">Toque para assinar</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <input type="checkbox" id="chk-termo-unified" onchange="checkCanEfetivar()">
+                    <label id="lbl-termo-unified" for="chk-termo-unified">
+                        <span class="tgl-pill"><span class="tgl-knob"></span></span>
+                        <span class="text-sm font-bold text-emerald-800 leading-snug" style="-webkit-user-select:none;">Li e concordo com o Termo de Consentimento</span>
                     </label>
-                    
-                    <button type="button" onclick="confirmarAgendamentoEGerar()" class="px-6 py-2 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2 whitespace-nowrap">
-                        <i class="ph-bold ph-check-circle"></i> Efetivar Cadastro
+
+                    <button id="btn-efetivar-unified" type="button" onclick="confirmarAgendamentoEGerar()" disabled>
+                        <i class="ph-bold ph-check-circle text-lg"></i> Efetivar Cadastro
                     </button>
+
+                        <button type="button" onclick="verTermoMobile()" class="flex-1 flex items-center justify-center gap-1.5 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-xl transition-colors active:bg-slate-50" style="min-height: 44px;">
+                            <i class="ph-bold ph-arrow-square-out"></i> Ver Termo
+                        </button>
+                        <button type="button" onclick="voltarParaAnamnese()" class="flex-1 flex items-center justify-center gap-1.5 text-sm font-semibold text-slate-500 bg-white border border-slate-200 rounded-xl transition-colors active:bg-slate-50" style="min-height: 44px;">
+                            <i class="ph-bold ph-arrow-left text-sm"></i> Voltar
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
+
+        <!-- SPRINT 2 · ITEM C: Overlay de sucesso animado -->
+        <!-- Aparece por cima do conteúdo do modal após efetivar o cadastro.
+             Exibido via showSucessoCadastro(nomePaciente) e fechado em 4s ou no clique. -->
+        <div id="overlay_sucesso_cadastro" class="hidden absolute inset-0 z-20 flex flex-col items-center justify-center rounded-t-2xl sm:rounded-2xl" style="background: rgba(255,255,255,0.97); backdrop-filter: blur(4px);">
+            <div class="flex flex-col items-center gap-5 px-8 text-center animate-fade-in-down">
+                <!-- Ícone animado -->
+                <div id="icone_sucesso" class="flex items-center justify-center rounded-full bg-emerald-100 border-4 border-emerald-400" style="width: 88px; height: 88px; animation: popIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both;">
+                    <i class="ph-bold ph-check-circle" style="font-size: 48px; color: #059669;"></i>
+                </div>
+                <!-- Mensagem -->
+                <div>
+                    <p class="text-2xl font-bold text-slate-900 mb-1">Cadastro Realizado!</p>
+                    <p id="sucesso_nome_paciente" class="text-base text-emerald-700 font-semibold mb-1"></p>
+                    <p class="text-sm text-slate-500">Anamnese e Termo de Consentimento salvos.</p>
+                </div>
+                <!-- Botão para fechar manualmente -->
+                <button type="button" onclick="fecharOverlaySucesso()" class="mt-2 px-8 py-3 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-2xl shadow-md transition-colors" style="min-height: 48px;">
+                    <i class="ph-bold ph-arrow-left"></i> Novo Cadastro
+                </button>
+            </div>
+        </div>
     </div>
+</div>
+
+<style>
+    @keyframes popIn {
+        0%   { transform: scale(0.4); opacity: 0; }
+        100% { transform: scale(1);   opacity: 1; }
+    }
+</style>
 
 
     <!-- Modal de Confirmação Customizado -->
@@ -705,7 +986,7 @@
                 <button id="confirm-cancel"
                     class="flex-1 py-4 text-sm font-bold text-slate-500 hover:bg-white/5 transition-colors border-r border-white/5 uppercase tracking-widest">Cancelar</button>
                 <button id="confirm-ok"
-                    class="flex-1 py-4 text-sm font-bold text-indigo-400 hover:bg-indigo-500/10 transition-colors uppercase tracking-widest">Confirmar</button>
+                    class="flex-1 py-4 text-sm font-bold text-emerald-400 hover:bg-emerald-500/10 transition-colors uppercase tracking-widest">Confirmar</button>
             </div>
         </div>
     </div>
@@ -717,14 +998,14 @@
             style="background: #1e2235;">
             <div class="p-8 text-center">
                 <div
-                    class="w-16 h-16 bg-indigo-500/20 text-indigo-400 rounded-full flex items-center justify-center mx-auto mb-5 border border-indigo-500/20">
+                    class="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-5 border border-emerald-500/20">
                     <i class="ph-bold ph-info text-3xl"></i>
                 </div>
                 <h3 class="text-xl font-bold text-white mb-3" id="alert-title">Aviso</h3>
                 <p class="text-slate-400 text-sm leading-relaxed" id="alert-msg">Mensagem decuidado.</p>
             </div>
             <button id="alert-ok"
-                class="w-full py-5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors uppercase tracking-widest rounded-b-3xl">Entendido</button>
+                class="w-full py-5 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors uppercase tracking-widest rounded-b-3xl">Entendido</button>
         </div>
     </div>
 
@@ -734,7 +1015,29 @@
         const inputTelefone = document.getElementById("telefone");
         const inputNascimento = document.getElementById("data_nascimento");
 
-        if (inputNome) inputNome.addEventListener("input", (e) => e.target.value = e.target.value.replace(/[0-9]/g, ""));
+        // Smart Title Case for Portuguese names
+        function formatTitleCase(str) {
+            if (!str) return '';
+            const lowercaseWords = ['de', 'da', 'do', 'das', 'dos', 'e', 'em', 'com', 'para', 'por'];
+            return str
+                .trim()
+                .toLowerCase()
+                .split(/\s+/)
+                .map((word, index, arr) => {
+                    if (lowercaseWords.includes(word) && index > 0 && index < arr.length - 1) {
+                        return word;
+                    }
+                    return word.charAt(0).toUpperCase() + word.slice(1);
+                })
+                .join(' ');
+        }
+
+        if (inputNome) {
+            inputNome.addEventListener("input", (e) => e.target.value = e.target.value.replace(/[0-9]/g, ""));
+            inputNome.addEventListener("blur", (e) => {
+                e.target.value = formatTitleCase(e.target.value);
+            });
+        }
 
         if (inputTelefone) {
             inputTelefone.addEventListener("input", (e) => {
@@ -802,7 +1105,7 @@
                 ufContainer.innerHTML = '';
                 Object.keys(estadosBR).sort().forEach(sigla => {
                     const div = document.createElement('div');
-                    div.className = 'option p-2 hover:bg-indigo-50 cursor-pointer text-sm';
+                    div.className = 'option p-2 hover:bg-emerald-50 cursor-pointer text-sm';
                     div.dataset.value = sigla;
                     div.textContent = sigla;
                     ufContainer.appendChild(div);
@@ -909,18 +1212,19 @@
                     const isFinalizado = p.status_atendimento === 'finalizado';
 
                     const li = document.createElement('li');
-                    li.className = 'p-4 hover:bg-slate-50 transition-colors border-l-2 border-transparent hover:border-indigo-500 animate-fade-in-down group';
+                    li.setAttribute('data-paciente-id', p.id);
+                    li.className = 'p-4 hover:bg-slate-50 transition-colors border-l-2 border-transparent hover:border-emerald-500 animate-fade-in-down group';
 
                     const statusBadge = isFinalizado
                         ? `<span class="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-full uppercase tracking-wider border border-emerald-100">Finalizado</span>`
-                        : `<span class="px-2.5 py-1 bg-indigo-50 text-indigo-700 text-[10px] font-bold rounded-full uppercase tracking-wider border border-indigo-100">Cadastrado</span>`;
+                        : `<span class="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-full uppercase tracking-wider border border-emerald-100">Cadastrado</span>`;
 
                     li.innerHTML = `
                         <div class="flex justify-between items-center">
                             <div class="flex items-center gap-4 cursor-pointer flex-1 abrir-perfil-btn">
-                                <div class="w-10 h-10 rounded-full ${isFinalizado ? 'bg-emerald-100 text-emerald-700' : 'bg-indigo-100 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white'} flex items-center justify-center font-bold text-sm transition-all">${p.nome.substring(0, 2).toUpperCase()}</div>
+                                <div class="w-10 h-10 rounded-full ${isFinalizado ? 'bg-emerald-100 text-emerald-700' : 'bg-emerald-100 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white'} flex items-center justify-center font-bold text-sm transition-all">${p.nome.substring(0, 2).toUpperCase()}</div>
                                 <div>
-                                    <p class="text-sm font-bold text-slate-900 group-hover:text-indigo-700">${p.nome}</p>
+                                    <p class="text-sm font-bold text-slate-900 group-hover:text-emerald-700">${p.nome}</p>
                                     <div class="flex items-center gap-2 text-xs text-slate-500">
                                         <span class="bg-slate-100 px-1.5 py-0.5 rounded">${p.convenio || 'Particular'}</span>
                                         ${statusBadge}
@@ -994,11 +1298,11 @@
         function setFiltroStatus(status, btn) {
             filtroStatusAtivo = status;
             document.querySelectorAll('.filtro-status-btn').forEach(b => {
-                b.classList.remove('active', 'bg-indigo-600', 'text-white', 'border-indigo-600');
+                b.classList.remove('active', 'bg-emerald-600', 'text-white', 'border-emerald-600');
                 b.classList.add('bg-white', 'text-slate-500', 'border-slate-200');
             });
             btn.classList.remove('bg-white', 'text-slate-500', 'border-slate-200');
-            btn.classList.add('active', 'bg-indigo-600', 'text-white', 'border-indigo-600');
+            btn.classList.add('active', 'bg-emerald-600', 'text-white', 'border-emerald-600');
             filtrarLista();
         }
 
@@ -1058,8 +1362,8 @@
             const btnSubmit = document.querySelector('#formCadastro button[type="submit"]');
             if (btnSubmit) {
                 btnSubmit.textContent = 'Salvar Alterações';
-                btnSubmit.classList.replace('bg-indigo-600', 'bg-amber-500');
-                btnSubmit.classList.replace('hover:bg-indigo-700', 'hover:bg-amber-600');
+                btnSubmit.classList.replace('bg-emerald-600', 'bg-amber-500');
+                btnSubmit.classList.replace('hover:bg-emerald-700', 'hover:bg-amber-600');
             }
 
             // Scroll para o formulário
@@ -1081,11 +1385,12 @@
                 const horaChegada = dataCriacao.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
                 const isFinalizado = p.status_atendimento === 'finalizado';
                 const li = document.createElement('li');
-                li.className = 'p-4 hover:bg-slate-50 transition-colors border-l-2 border-transparent hover:border-indigo-500 animate-fade-in-down group';
+                li.setAttribute('data-paciente-id', p.id);
+                li.className = 'p-4 hover:bg-slate-50 transition-colors border-l-2 border-transparent hover:border-emerald-500 animate-fade-in-down group';
                 const statusBadge = isFinalizado
                     ? `<span class="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-full uppercase tracking-wider border border-emerald-100">Finalizado</span>`
-                    : `<span class="px-2.5 py-1 bg-indigo-50 text-indigo-700 text-[10px] font-bold rounded-full uppercase tracking-wider border border-indigo-100">Cadastrado</span>`;
-                li.innerHTML = `<div class="flex justify-between items-center"><div class="flex items-center gap-4 cursor-pointer flex-1 abrir-perfil-btn"><div class="w-10 h-10 rounded-full ${isFinalizado ? 'bg-emerald-100 text-emerald-700' : 'bg-indigo-100 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white'} flex items-center justify-center font-bold text-sm transition-all">${p.nome.substring(0, 2).toUpperCase()}</div><div><p class="text-sm font-bold text-slate-900 group-hover:text-indigo-700">${p.nome}</p><div class="flex items-center gap-2 text-xs text-slate-500"><span class="bg-slate-100 px-1.5 py-0.5 rounded">${p.convenio || 'Particular'}</span>${statusBadge}</div></div></div><button class="ml-2 p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors flex-shrink-0 btn-excluir-inline" title="Excluir paciente"><i class="ph-bold ph-trash text-sm"></i></button></div>`;
+                    : `<span class="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-full uppercase tracking-wider border border-emerald-100">Cadastrado</span>`;
+                li.innerHTML = `<div class="flex justify-between items-center"><div class="flex items-center gap-4 cursor-pointer flex-1 abrir-perfil-btn"><div class="w-10 h-10 rounded-full ${isFinalizado ? 'bg-emerald-100 text-emerald-700' : 'bg-emerald-100 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white'} flex items-center justify-center font-bold text-sm transition-all">${p.nome.substring(0, 2).toUpperCase()}</div><div><p class="text-sm font-bold text-slate-900 group-hover:text-emerald-700">${p.nome}</p><div class="flex items-center gap-2 text-xs text-slate-500"><span class="bg-slate-100 px-1.5 py-0.5 rounded">${p.convenio || 'Particular'}</span>${statusBadge}</div></div></div><button class="ml-2 p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors flex-shrink-0 btn-excluir-inline" title="Excluir paciente"><i class="ph-bold ph-trash text-sm"></i></button></div>`;
                 li.querySelector('.abrir-perfil-btn').addEventListener('click', () => abrirModal({ id: p.id, nome: p.nome, convenio: p.convenio || 'Particular', chegada: horaChegada }));
                 li.querySelector('.btn-excluir-inline').addEventListener('click', (e) => { e.stopPropagation(); confirmarExclusao(p.id, p.nome); });
                 lista.appendChild(li);
@@ -1111,7 +1416,7 @@
             }, 10);
 
             applyModalDarkMode();
-            await carregarPerfilDocumentos(pacienteSelecionadoId);
+            await carregarPerfilDocumentos(pacienteSelecionadoId, paciente.medico_id || paciente.medicoId || null);
         }
 
         // Aplica dark mode com contraste correto no #modalDetalhes via estilos inline
@@ -1153,7 +1458,7 @@
             const body = modal.querySelector('.overflow-y-auto');
             if (body) body.style.backgroundColor = '#192234';
 
-            // Cards de info: CHEGADA, CONVÊNIO (bg-indigo-50/50)
+            // Cards de info: CHEGADA, CONVÊNIO (bg-emerald-50/50)
             const infoCards = modal.querySelectorAll('.grid.grid-cols-3 > div');
             infoCards.forEach((card, i) => {
                 if (i < 2) {
@@ -1165,7 +1470,7 @@
                     card.style.backgroundColor = '#1e293b';
                     card.style.borderColor = '#334155';
                 }
-                // Label (text-indigo-400 ou text-slate-400)
+                // Label (text-emerald-400 ou text-slate-400)
                 const label = card.querySelector('span:first-child');
                 if (label) label.style.color = i < 2 ? '#818cf8' : '#94a3b8';
                 // Valor (text-slate-700 ou text-slate-500)
@@ -1212,7 +1517,7 @@
                 footer.style.borderTopColor = '#334155';
             }
 
-            // Botão Editar (bg-indigo-50 text-indigo-700)
+            // Botão Editar (bg-emerald-50 text-emerald-700)
             const btnEditar = modal.querySelector('#btnEditarPacienteModal');
             if (btnEditar) {
                 btnEditar.style.backgroundColor = 'rgba(79,70,229,0.15)';
@@ -1231,10 +1536,11 @@
                 document.documentElement.classList.remove('overflow-hidden');
                 document.body.style.overflow = '';
                 pacienteSelecionadoId = null;
+                window._pacienteAssinaturaData = null;
             }, 300);
         }
 
-        async function carregarPerfilDocumentos(pacId) {
+        async function carregarPerfilDocumentos(pacId, medicoId = null) {
             const sts = document.getElementById('docSecTermoStatus');
             const dataTxt = document.getElementById('docSecTermoData');
             const btnReimprimir = document.getElementById('btnReimprimirTermo');
@@ -1256,10 +1562,40 @@
                  return;
             }
 
+            // Inicia busca da assinatura/dados do médico em paralelo
+            if (medicoId) {
+                let medicoLocal = null;
+                try {
+                    const raw = localStorage.getItem('medico_ativo');
+                    if (raw) {
+                        const parsed = JSON.parse(raw);
+                        if (parsed && parsed.id === medicoId) {
+                            medicoLocal = parsed;
+                        }
+                    }
+                } catch (e) {
+                    console.warn('[recepcao] Erro ao ler medico_ativo do localStorage:', e);
+                }
+
+                if (medicoLocal) {
+                    aplicarDadosMedico(medicoLocal);
+                }
+
+                if (window.fetchMedicoData) {
+                    window.fetchMedicoData(medicoId).then(async (medico) => {
+                        if (medico) {
+                            await aplicarDadosMedico(medico);
+                        }
+                    }).catch(errFetch => {
+                        console.error('[recepcao] Erro ao buscar dados do médico:', errFetch);
+                    });
+                }
+            }
+
             try {
                 const pTermo = window.supabaseClient
                     .from('cicatrize_termos_consentimento')
-                    .select('aceito, aceito_em')
+                    .select('aceito, aceito_em, metadata')
                     .eq('paciente_id', pacId)
                     .order('aceito_em', { ascending: false })
                     .limit(1)
@@ -1283,15 +1619,23 @@
                         const d = new Date(data.aceito_em);
                         dataTxt.textContent = "Assinado em: " + d.toLocaleString('pt-BR');
                         btnReimprimir.classList.remove('hidden');
+
+                        // Recupera o modo de consentimento e a assinatura do paciente
+                        window.currentConsentMode = data.metadata?.consent_mode || 'digital';
+                        window._pacienteAssinaturaData = data.metadata?.paciente_assinatura_base64 || null;
                     } else {
                         sts.className = "px-2 py-1 bg-amber-100 text-amber-700 text-[10px] font-bold rounded-md tracking-wider";
                         sts.textContent = "RECUSADO / PENDENTE";
                         dataTxt.textContent = "O paciente não possui aceite formal ativo.";
+                        window.currentConsentMode = 'digital';
+                        window._pacienteAssinaturaData = null;
                     }
                 } else {
                     sts.className = "px-2 py-1 bg-rose-100 text-rose-700 text-[10px] font-bold rounded-md tracking-wider";
                     sts.textContent = "NÃO LOCALIZADO";
                     dataTxt.textContent = "Nenhum termo de consentimento registrado.";
+                    window.currentConsentMode = 'digital';
+                    window._pacienteAssinaturaData = null;
                 }
 
                 if (resAnamnese.status === "fulfilled" && !resAnamnese.value.error && resAnamnese.value.data) {
@@ -1312,7 +1656,7 @@
                     
                     // Condições Sistêmicas
                     html += `<div class="mb-4">`;
-                    html += `<p class="font-bold text-[11px] text-indigo-500 uppercase tracking-widest mb-2 flex items-center gap-1.5"><i class="ph-bold ph-heart text-rose-400"></i> Condições Sistêmicas</p>`;
+                    html += `<p class="font-bold text-[11px] text-emerald-500 uppercase tracking-widest mb-2 flex items-center gap-1.5"><i class="ph-bold ph-heart text-rose-400"></i> Condições Sistêmicas</p>`;
                     html += `<div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-0.5 pl-1">`;
                     html += booleanField("Diabetes", ad.has_diabetes);
                     html += booleanField("Hipertensão", ad.has_hipertensao);
@@ -1348,8 +1692,8 @@
                     if (ad.tipo_pele) {
                         const tipoLabels = { 'I': 'I - Muito clara', 'II': 'II - Clara', 'III': 'III - Morena clara', 'IV': 'IV - Morena', 'V': 'V - Escura', 'VI': 'VI - Muito escura' };
                         html += `<div class="mt-3 flex items-center gap-2">
-                            <span class="text-[11px] font-bold text-indigo-500 uppercase tracking-wider">Tipo de Pele:</span>
-                            <span class="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-md border border-indigo-100">${tipoLabels[ad.tipo_pele] || ad.tipo_pele}</span>
+                            <span class="text-[11px] font-bold text-emerald-500 uppercase tracking-wider">Tipo de Pele:</span>
+                            <span class="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-md border border-emerald-100">${tipoLabels[ad.tipo_pele] || ad.tipo_pele}</span>
                         </div>`;
                     }
                     
@@ -1366,7 +1710,7 @@
                         html += `<div class="mt-4 pt-3 border-t border-slate-100 space-y-3">`;
                         filled.forEach(f => {
                             html += `<div>
-                                <p class="font-bold text-[11px] text-indigo-500 uppercase tracking-widest mb-1">${f.label}</p>
+                                <p class="font-bold text-[11px] text-emerald-500 uppercase tracking-widest mb-1">${f.label}</p>
                                 <p class="text-sm text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-200 leading-relaxed">${f.value.replace(/\n/g, '<br>')}</p>
                             </div>`;
                         });
@@ -1438,43 +1782,129 @@
             });
         }
 
+        async function dbExcluirPaciente(id) {
+            if (!window.supabaseClient) {
+                console.warn('[dbExcluirPaciente] Supabase client não disponível.');
+                return false;
+            }
+            try {
+                // 1. Busca as consultas do paciente
+                const { data: consultas, error: errConsultas } = await window.supabaseClient
+                    .from('consultas')
+                    .select('id')
+                    .eq('paciente_id', id);
+
+                if (errConsultas) throw errConsultas;
+
+                // 2. Exclui assinaturas de prontuário vinculadas a essas consultas
+                if (consultas && consultas.length > 0) {
+                    const consultaIds = consultas.map(c => c.id);
+                    const { error: errAssinaturas } = await window.supabaseClient
+                        .from('cicatrize_prontuario_assinaturas')
+                        .delete()
+                        .in('consulta_id', consultaIds);
+                    if (errAssinaturas) {
+                        console.warn('[dbExcluirPaciente] Erro ao deletar assinaturas:', errAssinaturas.message);
+                    }
+                }
+
+                // 3. Exclui checklist de anamnese do paciente
+                const { error: errAnamnese } = await window.supabaseClient
+                    .from('cicatrize_checklist_anamnese')
+                    .delete()
+                    .eq('paciente_id', id);
+                if (errAnamnese) {
+                    console.warn('[dbExcluirPaciente] Erro ao deletar anamnese:', errAnamnese.message);
+                }
+
+                // 4. Exclui termos de consentimento do paciente
+                const { error: errTermos } = await window.supabaseClient
+                    .from('cicatrize_termos_consentimento')
+                    .delete()
+                    .eq('paciente_id', id);
+                if (errTermos) {
+                    console.warn('[dbExcluirPaciente] Erro ao deletar termos:', errTermos.message);
+                }
+
+                // 5. Exclui imagens do paciente
+                const { error: errImagens } = await window.supabaseClient
+                    .from('paciente_imagens')
+                    .delete()
+                    .eq('paciente_id', id);
+                if (errImagens) {
+                    console.warn('[dbExcluirPaciente] Erro ao deletar imagens:', errImagens.message);
+                }
+
+                // 6. Exclui consultas do paciente
+                const { error: errDelConsultas } = await window.supabaseClient
+                    .from('consultas')
+                    .delete()
+                    .eq('paciente_id', id);
+                if (errDelConsultas) throw errDelConsultas;
+
+                // 7. Por fim, exclui o paciente da tabela pacientes
+                const { error: errPaciente } = await window.supabaseClient
+                    .from('pacientes')
+                    .delete()
+                    .eq('id', id);
+                if (errPaciente) throw errPaciente;
+
+                return true;
+            } catch (err) {
+                console.error('[dbExcluirPaciente] Erro crítico ao excluir paciente do banco:', err);
+                throw err;
+            }
+        }
+
         async function excluirPaciente() {
             if (!pacienteSelecionadoId) return;
 
             const confirmed = await showCustomConfirm("Deseja realmente excluir este paciente? Esta ação não pode ser desfeita.", "Excluir Paciente");
             if (!confirmed) return;
 
-            const modalBtn = document.getElementById('btnExcluirPacienteModal');
-            let originalText = '';
-            if (modalBtn) {
-                originalText = modalBtn.innerHTML;
-                modalBtn.innerHTML = '<i class="ph ph-spinner animate-spin"></i> Excluindo...';
-                modalBtn.disabled = true;
+            const id = pacienteSelecionadoId;
+            fecharModal(); // Fecha o modal imediatamente para resposta instantânea
+
+            // Oculta o item da UI de forma otimista e suave
+            const liElement = document.querySelector(`li[data-paciente-id="${id}"]`);
+            if (liElement) {
+                liElement.style.transition = 'all 0.3s ease';
+                liElement.style.opacity = '0';
+                liElement.style.height = '0';
+                liElement.style.padding = '0';
+                liElement.style.margin = '0';
+                liElement.style.border = 'none';
+                setTimeout(() => liElement.remove(), 300);
+            }
+
+            // Remove do cache de filtros
+            if (typeof allPacientesData !== 'undefined') {
+                allPacientesData = allPacientesData.filter(p => p.id !== id);
             }
 
             try {
+                // 1. Remove do banco de dados com cascata
+                await dbExcluirPaciente(id);
+
+                // 2. Chama o webhook de remoção em background (ex: limpar arquivos do storage)
                 const authHeaders = window.getAuthHeaders ? await window.getAuthHeaders() : {};
                 const medicoIdDel = window.getMedicoId ? window.getMedicoId() : '';
-                const response = await fetch(`${WEBHOOK_EXCLUIR}?id=${pacienteSelecionadoId}&medico_id=${encodeURIComponent(medicoIdDel)}`, {
+                
+                fetch(`${WEBHOOK_EXCLUIR}?id=${id}&medico_id=${encodeURIComponent(medicoIdDel)}`, {
                     method: 'GET',
                     headers: { 
                         'Accept': 'application/json',
                         ...authHeaders 
                     }
-                });
+                }).catch(e => console.warn('Erro ao disparar webhook de exclusão:', e));
 
-                if (!response.ok) throw new Error('Falha na exclusão');
-                fecharModal();
-                await carregarFila();
-
-            } catch (e) {
-                console.error(e);
-                showCustomAlert("Erro ao excluir paciente. Verifique sua conexão.", "Erro");
-            } finally {
-                if (modalBtn) {
-                    modalBtn.innerHTML = originalText;
-                    modalBtn.disabled = false;
+                if (window.showToast) {
+                    window.showToast("Paciente excluído com sucesso!");
                 }
+            } catch (e) {
+                console.error('Erro na exclusão otimista:', e);
+                showCustomAlert("Erro ao excluir paciente. Verifique sua conexão.", "Erro");
+                await carregarFila(); // Restaura UI em caso de falha
             }
         }
 
@@ -1482,23 +1912,46 @@
             const confirmed = await showCustomConfirm(`Excluir o paciente "${nome}"? Esta ação não pode ser desfeita.`, "Confirmar Exclusão");
             if (!confirmed) return;
 
+            // Oculta o item da UI de forma otimista e suave
+            const liElement = document.querySelector(`li[data-paciente-id="${id}"]`);
+            if (liElement) {
+                liElement.style.transition = 'all 0.3s ease';
+                liElement.style.opacity = '0';
+                liElement.style.height = '0';
+                liElement.style.padding = '0';
+                liElement.style.margin = '0';
+                liElement.style.border = 'none';
+                setTimeout(() => liElement.remove(), 300);
+            }
+
+            // Remove do cache de filtros
+            if (typeof allPacientesData !== 'undefined') {
+                allPacientesData = allPacientesData.filter(p => p.id !== id);
+            }
+
             try {
+                // 1. Remove do banco de dados com cascata
+                await dbExcluirPaciente(id);
+
+                // 2. Chama o webhook de remoção em background
                 const authHeaders = window.getAuthHeaders ? await window.getAuthHeaders() : {};
                 const medicoIdDel2 = window.getMedicoId ? window.getMedicoId() : '';
-                const response = await fetch(`${WEBHOOK_EXCLUIR}?id=${id}&medico_id=${encodeURIComponent(medicoIdDel2)}`, {
+                
+                fetch(`${WEBHOOK_EXCLUIR}?id=${id}&medico_id=${encodeURIComponent(medicoIdDel2)}`, {
                     method: 'GET',
                     headers: { 
                         'Accept': 'application/json',
                         ...authHeaders
                     }
-                });
+                }).catch(e => console.warn('Erro ao disparar webhook de exclusão:', e));
 
-                if (!response.ok) throw new Error('Falha na exclusão');
-                await carregarFila();
-
+                if (window.showToast) {
+                    window.showToast("Paciente excluído com sucesso!");
+                }
             } catch (e) {
-                console.error(e);
+                console.error('Erro na exclusão otimista:', e);
                 showCustomAlert("Erro ao excluir paciente. Verifique sua conexão.", "Erro");
+                await carregarFila(); // Restaura UI em caso de falha
             }
         }
 
@@ -1514,6 +1967,49 @@
 
         let dadosCadastroTemporario = null;
         let submitEventTarget = null;
+        window.signatureInstance = null;
+        window.currentConsentMode = 'digital';
+        window._medicoAssinaturaData = null;
+        window._pacienteAssinaturaData = null;
+
+        const aplicarDadosMedico = async (medico) => {
+            if (!medico) return;
+            const elNomeMedico = document.getElementById('assinatura-nome-medico');
+            const elCrmMedico = document.getElementById('assinatura-crm-medico');
+            const imgMedico = document.getElementById('assinatura-medico-img');
+
+            if (elNomeMedico) elNomeMedico.textContent = medico.nome_completo || medico.nome || 'Responsável Técnico';
+            if (elCrmMedico) elCrmMedico.textContent = medico.crm ? `CRM: ${medico.crm}-${medico.uf_crm || ''}` : '';
+
+            if (medico.assinatura_url) {
+                let signedUrl = null;
+                if (window.getSignedUrlForFile) {
+                    try {
+                        signedUrl = await window.getSignedUrlForFile(medico.assinatura_url);
+                    } catch (errUrl) {
+                        console.error('[recepcao] Erro ao obter URL assinada para médico:', errUrl);
+                    }
+                }
+                // Se a assinatura de URL/Base64 falhar, usamos a URL pública original como fallback
+                if (!signedUrl) {
+                    signedUrl = medico.assinatura_url;
+                }
+
+                if (signedUrl) {
+                    window._medicoAssinaturaData = signedUrl;
+                    // Apenas exibe se o modo de consentimento ainda for digital (evita corrida de renderização)
+                    if (imgMedico && window.currentConsentMode === 'digital') {
+                        imgMedico.src = signedUrl;
+                        imgMedico.style.display = 'block';
+                    }
+                } else {
+                    if (imgMedico) imgMedico.style.display = 'none';
+                }
+            } else {
+                if (imgMedico) imgMedico.style.display = 'none';
+            }
+        };
+        window.aplicarDadosMedico = aplicarDadosMedico;
         
         function fecharModalAnamnese() {
             document.getElementById('modalChecklistAnamnese').classList.add('hidden');
@@ -1535,14 +2031,153 @@
             document.getElementById('chk_historico_oncologico').checked = false;
             document.getElementById('chk_ferida_mmii').checked = false;
             document.getElementById('chk_pele_sensivel').checked = false;
-            document.querySelectorAll('input[name="tipo_pele"]').forEach(r => { r.checked = false; r.closest('label').classList.remove('bg-indigo-100','border-indigo-400','text-indigo-800'); });
+            document.querySelectorAll('input[name="tipo_pele"]').forEach(r => { r.checked = false; r.closest('label').classList.remove('bg-emerald-100','border-emerald-400','text-emerald-800'); });
             document.getElementById('txt_uso_continuo').value = '';
             document.getElementById('txt_cirurgias').value = '';
             document.getElementById('txt_pele').value = '';
             document.getElementById('txt_historico_familiar').value = '';
             document.getElementById('txt_observacoes').value = '';
             document.getElementById('chk_termo_aceito').checked = false;
+            if (document.getElementById('chk_termo_aceito_desktop')) {
+                document.getElementById('chk_termo_aceito_desktop').checked = false;
+            }
+
+            // Limpa assinaturas e imagens do modal
+            if (window.signatureInstance) {
+                window.signatureInstance.clear();
+            }
+            const imgPaciente = document.getElementById('assinatura-paciente-img');
+            if (imgPaciente) {
+                imgPaciente.src = '';
+                imgPaciente.style.display = 'none';
+            }
+            const imgMedico = document.getElementById('assinatura-medico-img');
+            if (imgMedico) {
+                imgMedico.src = '';
+                imgMedico.style.display = 'none';
+            }
+            if (window.checkCanEfetivar) {
+                window.checkCanEfetivar();
+            }
         }
+
+        function setConsentMode(mode) {
+            window.currentConsentMode = mode;
+            
+            const btnDigital = document.getElementById('btn-opt-digital');
+            const btnPhysical = document.getElementById('btn-opt-physical');
+            const canvasWrap = document.getElementById('canvas-assinatura-wrap');
+            const imgPaciente = document.getElementById('assinatura-paciente-img');
+            const imgMedico = document.getElementById('assinatura-medico-img');
+            const elDataHora = document.getElementById('assinatura-data-hora');
+            
+            const agora = new Date();
+            const dataFormatada = agora.toLocaleDateString('pt-BR', {
+                day: '2-digit', month: '2-digit', year: 'numeric'
+            });
+            const horaFormatada = agora.toLocaleTimeString('pt-BR', {
+                hour: '2-digit', minute: '2-digit'
+            });
+            const dataHoraAtendimento = `${dataFormatada} às ${horaFormatada}`;
+
+            if (mode === 'digital') {
+                if (canvasWrap) canvasWrap.style.display = '';
+                
+                if (btnDigital) { btnDigital.classList.add('selected'); }
+                if (btnPhysical) { btnPhysical.classList.remove('selected'); }
+                
+                if (window.signatureInstance && !window.signatureInstance.isEmpty()) {
+                    if (imgPaciente) {
+                        imgPaciente.src = window.signatureInstance.toPNG();
+                        imgPaciente.style.display = 'block';
+                    }
+                } else {
+                    if (imgPaciente) {
+                        imgPaciente.style.display = 'none';
+                        imgPaciente.src = '';
+                    }
+                    if (elDataHora) elDataHora.textContent = "Aguardando assinatura...";
+                }
+
+                // Exibe assinatura do médico no modo digital se estiver disponível
+                if (imgMedico && window._medicoAssinaturaData) {
+                    imgMedico.src = window._medicoAssinaturaData;
+                    imgMedico.style.display = 'block';
+                }
+            } else {
+                if (canvasWrap) canvasWrap.style.display = 'none';
+                
+                if (btnPhysical) { btnPhysical.classList.add('selected'); }
+                if (btnDigital) { btnDigital.classList.remove('selected'); }
+                
+                if (imgPaciente) {
+                    imgPaciente.style.display = 'none';
+                    imgPaciente.src = '';
+                }
+                
+                if (imgMedico) {
+                    imgMedico.style.display = 'none';
+                    imgMedico.src = '';
+                }
+
+                if (elDataHora) elDataHora.textContent = dataHoraAtendimento;
+            }
+            checkCanEfetivar();
+        }
+        window.setConsentMode = setConsentMode;
+
+        function checkCanEfetivar() {
+            const isDigital = window.currentConsentMode === 'digital';
+            const hasSignature = !isDigital || (window.signatureInstance && !window.signatureInstance.isEmpty());
+
+            // Novo botão unificado
+            const chkUnified = document.getElementById('chk-termo-unified');
+            const btnUnified = document.getElementById('btn-efetivar-unified');
+            const lblUnified = document.getElementById('lbl-termo-unified');
+            if (chkUnified && btnUnified) {
+                const canEfetivar = chkUnified.checked && hasSignature;
+                btnUnified.disabled = !canEfetivar;
+                if (canEfetivar) btnUnified.classList.add('can-submit');
+                else btnUnified.classList.remove('can-submit');
+                if (lblUnified) {
+                    if (chkUnified.checked) lblUnified.classList.add('checked');
+                    else lblUnified.classList.remove('checked');
+                }
+            }
+
+            // Compat: mantém os checkboxes e botões ocultos sincronizados
+            // para que confirmarAgendamentoEGerar() que lê chk_termo_aceito continue funcionando
+            const chkCompat = document.getElementById('chk_termo_aceito');
+            const chkCompatD = document.getElementById('chk_termo_aceito_desktop');
+            if (chkCompat && chkUnified) chkCompat.checked = chkUnified.checked;
+            if (chkCompatD && chkUnified) chkCompatD.checked = chkUnified.checked;
+        }
+        window.checkCanEfetivar = checkCanEfetivar;
+
+        // Troca de abas no mobile (Ler Termo / Assinar)
+        function termoSetTab(tab) {
+            const tabLer = document.getElementById('tab-ler');
+            const tabAssinar = document.getElementById('tab-assinar');
+            const panelLer = document.getElementById('panel-ler');
+            const panelAssinar = document.getElementById('panel-assinar');
+            if (!tabLer || !panelLer) return;
+            if (tab === 'ler') {
+                tabLer.classList.add('active'); tabAssinar.classList.remove('active');
+                panelLer.classList.add('active'); panelAssinar.classList.remove('active');
+            } else {
+                tabAssinar.classList.add('active'); tabLer.classList.remove('active');
+                panelAssinar.classList.add('active'); panelLer.classList.remove('active');
+                // Resize canvas quando a aba de assinar fica visível
+                if (window.signatureInstance) {
+                    setTimeout(() => window.signatureInstance.resizeCanvas(), 50);
+                }
+            }
+        }
+        window.termoSetTab = termoSetTab;
+
+        // Redireciona verTermoMobile() para a aba Ler
+        function verTermoMobile() { termoSetTab('ler'); }
+        window.verTermoMobile = verTermoMobile;
 
         function avancarParaTermo() {
             // Injeta nome do paciente e data/hora exata no bloco de assinatura
@@ -1564,8 +2199,110 @@
             if (elNome) elNome.textContent = nomePaciente || '—';
             if (elDataHora) elDataHora.textContent = `${dataFormatada} às ${horaFormatada}`;
 
+            // Oculta modal checklist e exibe modal termo
             document.getElementById('modalChecklistAnamnese').classList.add('hidden');
             document.getElementById('modalTermoConsentimento').classList.remove('hidden');
+            // Sempre começa na aba "Ler Termo" e reseta o toggle
+            termoSetTab('ler');
+            const chkU = document.getElementById('chk-termo-unified');
+            if (chkU) { chkU.checked = false; }
+            const lblU = document.getElementById('lbl-termo-unified');
+            if (lblU) lblU.classList.remove('checked');
+
+            // Inicializa ou redimensiona a assinatura digital (com pequeno delay para o modal terminar reflow)
+            setTimeout(() => {
+                if (!window.signatureInstance) {
+                    window.signatureInstance = new CanvasSignature(
+                        'signature-canvas',
+                        'canvas-assinatura-wrap',
+                        'btn-limpar-canvas',
+                        'assinatura-data-hora',
+                        null,
+                        'Assinatura'
+                    );
+
+                    const canvasEl = document.getElementById('signature-canvas');
+                    const syncPatientSignature = () => {
+                        const img = document.getElementById('assinatura-paciente-img');
+                        if (img) {
+                            if (window.signatureInstance && !window.signatureInstance.isEmpty()) {
+                                img.src = window.signatureInstance.toPNG();
+                                img.style.display = 'block';
+                            } else {
+                                img.src = '';
+                                img.style.display = 'none';
+                            }
+                        }
+                        checkCanEfetivar();
+                    };
+
+                    if (window.PointerEvent) {
+                        canvasEl.addEventListener('pointerup', syncPatientSignature);
+                        canvasEl.addEventListener('pointerout', syncPatientSignature);
+                        canvasEl.addEventListener('pointercancel', syncPatientSignature);
+                    } else {
+                        canvasEl.addEventListener('touchend', syncPatientSignature);
+                        canvasEl.addEventListener('touchcancel', syncPatientSignature);
+                        canvasEl.addEventListener('mouseup', syncPatientSignature);
+                        canvasEl.addEventListener('mouseout', syncPatientSignature);
+                    }
+
+                    document.getElementById('btn-limpar-canvas').addEventListener('click', () => {
+                        const img = document.getElementById('assinatura-paciente-img');
+                        if (img) {
+                            img.src = '';
+                            img.style.display = 'none';
+                        }
+                        checkCanEfetivar();
+                    });
+                } else {
+                    window.signatureInstance.clear();
+                    window.signatureInstance.resizeCanvas();
+                    // clear() sobrescreve assinatura-data-hora com "Aguardando assinatura..."
+                    // Restauramos imediatamente a data/hora correta do atendimento
+                    if (elDataHora) elDataHora.textContent = `${dataFormatada} às ${horaFormatada}`;
+                }
+                
+                // Garante reset para o modo digital ao abrir
+                setConsentMode('digital');
+                checkCanEfetivar();
+            }, 50);
+
+            // Busca dados do médico e assinatura url
+            const medicoId = (dadosCadastroTemporario && dadosCadastroTemporario.medico_id) || (window.getMedicoId ? window.getMedicoId() : null);
+            window._medicoAssinaturaData = null; // Reset cache antes de nova busca
+
+            // Passo 1: Fallback imediato do LocalStorage (bypassa RLS da recepção)
+            let medicoLocal = null;
+            try {
+                const raw = localStorage.getItem('medico_ativo');
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && (parsed.id === medicoId || !medicoId)) {
+                        medicoLocal = parsed;
+                    }
+                }
+            } catch (e) {
+                console.warn('[recepcao] Erro ao ler medico_ativo do localStorage:', e);
+            }
+
+
+
+            // Aplica os dados locais imediatamente
+            if (medicoLocal) {
+                aplicarDadosMedico(medicoLocal);
+            }
+
+            // Passo 2: Busca dados frescos do médico via Supabase
+            if (medicoId && window.fetchMedicoData) {
+                window.fetchMedicoData(medicoId).then(async (medico) => {
+                    if (medico) {
+                        await aplicarDadosMedico(medico);
+                    }
+                }).catch(errFetch => {
+                    console.error('[recepcao] Erro ao buscar dados do médico:', errFetch);
+                });
+            }
         }
 
         function fecharModalTermo() {
@@ -1575,8 +2312,45 @@
         }
 
         function imprimirTermo() {
-            // Garante que nome e data/hora estejam preenchidos no bloco de assinatura
-            // (para reimpressão de termos de pacientes já cadastrados)
+            // === PASSO 1: Força sincronização de AMBAS as assinaturas ===
+            // Paciente: garante que o canvas ou a assinatura salva seja capturada no img do termo (apenas modo digital)
+            const imgPac = document.getElementById('assinatura-paciente-img');
+            if (window.currentConsentMode === 'digital') {
+                let pngData = null;
+                if (window.signatureInstance && !window.signatureInstance.isEmpty()) {
+                    pngData = window.signatureInstance.toPNG();
+                } else if (window._pacienteAssinaturaData) {
+                    pngData = window._pacienteAssinaturaData;
+                }
+                
+                if (imgPac && pngData) {
+                    imgPac.src = pngData;
+                    imgPac.style.display = 'block';
+                } else if (imgPac) {
+                    imgPac.src = '';
+                    imgPac.style.display = 'none';
+                }
+            } else {
+                if (imgPac) {
+                    imgPac.src = '';
+                    imgPac.style.display = 'none';
+                }
+            }
+            // Médico: usa cache se o img ainda não foi populado (race condition async)
+            const imgMed = document.getElementById('assinatura-medico-img');
+            if (window.currentConsentMode === 'digital' && window._medicoAssinaturaData) {
+                if (imgMed) {
+                    imgMed.src = window._medicoAssinaturaData;
+                    imgMed.style.display = 'block';
+                }
+            } else {
+                if (imgMed) {
+                    imgMed.src = '';
+                    imgMed.style.display = 'none';
+                }
+            }
+
+            // === PASSO 2: Garante nome e data/hora no bloco ===
             const elNome = document.getElementById('assinatura-nome-paciente');
             const elDataHora = document.getElementById('assinatura-data-hora');
 
@@ -1584,36 +2358,99 @@
                 const nomeModal = document.getElementById('modal-nome')?.textContent?.trim();
                 if (nomeModal) elNome.textContent = nomeModal;
             }
-            if (elDataHora && (!elDataHora.textContent || elDataHora.textContent.trim() === '' || elDataHora.innerHTML === '&nbsp;')) {
-                // Tenta pegar a data do campo "Assinado em: ..." do perfil, senão usa agora
+            // Restaura data/hora se estiver vazia ou com o texto padrão do canvas
+            if (elDataHora && (
+                !elDataHora.textContent ||
+                elDataHora.textContent.trim() === '' ||
+                elDataHora.innerHTML === '&nbsp;' ||
+                elDataHora.textContent.includes('Aguardando')
+            )) {
                 const textoData = document.getElementById('docSecTermoData')?.textContent || '';
                 const matchData = textoData.match(/Assinado em:\s*(.+)/);
-                elDataHora.textContent = matchData ? matchData[1].trim() : new Date().toLocaleString('pt-BR');
+                elDataHora.textContent = matchData
+                    ? matchData[1].trim()
+                    : new Date().toLocaleString('pt-BR');
             }
 
-            const content = document.getElementById('termo-imprimir').innerHTML;
+            // === PASSO 3: Captura o conteúdo e abre iframe de impressão ===
+            // Clona o elemento para não alterar o DOM original
+            const termoOriginal = document.getElementById('termo-imprimir');
+            const termoClone = termoOriginal.cloneNode(true);
+            // Remove atributos onerror das imagens no clone (evita que se escondam no iframe)
+            termoClone.querySelectorAll('img').forEach(img => {
+                img.removeAttribute('onerror');
+                if (window.currentConsentMode === 'digital') {
+                    if (img.id === 'assinatura-paciente-img') {
+                        let pngData = null;
+                        if (window.signatureInstance && !window.signatureInstance.isEmpty()) {
+                            pngData = window.signatureInstance.toPNG();
+                        } else if (window._pacienteAssinaturaData) {
+                            pngData = window._pacienteAssinaturaData;
+                        }
+                        
+                        if (pngData) {
+                            img.src = pngData;
+                            img.style.display = 'block';
+                        } else {
+                            img.style.display = 'none';
+                        }
+                    } else if (img.id === 'assinatura-medico-img') {
+                        if (window._medicoAssinaturaData) {
+                            img.src = window._medicoAssinaturaData;
+                            img.style.display = 'block';
+                        } else {
+                            img.style.display = 'none';
+                        }
+                    } else {
+                        const originalImg = termoOriginal.querySelector('#' + img.id);
+                        if (originalImg && originalImg.src && !originalImg.src.endsWith('#') && originalImg.src !== window.location.href) {
+                            img.src = originalImg.src;
+                            img.style.display = 'block';
+                        } else {
+                            img.style.display = 'none';
+                        }
+                    }
+                } else {
+                    // Modo físico: oculta as assinaturas na impressão
+                    img.style.display = 'none';
+                    img.src = '';
+                }
+            });
+            const content = termoClone.innerHTML;
             const iframe = document.createElement('iframe');
-            iframe.style.display = 'none';
+            
+            // Usar visibility: hidden e posicionamento absoluto em vez de display: none
+            // para garantir que o navegador faça o download e o decode de todas as imagens antes de imprimir.
+            iframe.style.position = 'absolute';
+            iframe.style.width = '0px';
+            iframe.style.height = '0px';
+            iframe.style.border = 'none';
+            iframe.style.visibility = 'hidden';
+            
             document.body.appendChild(iframe);
             iframe.contentWindow.document.open();
             iframe.contentWindow.document.write('<html><head><title>Termo de Consentimento - Clínica Cicatrize</title>');
-            iframe.contentWindow.document.write('<link href="https://cdn.tailwindcss.com" rel="stylesheet">');
-            iframe.contentWindow.document.write('</head><body style="padding: 40px; font-family: serif; color: black; background: white;">');
+            iframe.contentWindow.document.write('<script src="https://cdn.tailwindcss.com"><\/script>');
+            iframe.contentWindow.document.write('<style>@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}body{font-family:Georgia,serif;color:#1e293b;background:white;font-size:13px;line-height:1.6;}img{max-width:100%;height:auto;}p{margin-bottom:12px;text-align:justify;}</style>');
+            iframe.contentWindow.document.write('</head><body style="padding:40px 48px;">');
             iframe.contentWindow.document.write(content);
             iframe.contentWindow.document.write('</body></html>');
             iframe.contentWindow.document.close();
-            
+
             setTimeout(() => {
                 iframe.contentWindow.focus();
                 iframe.contentWindow.print();
                 setTimeout(() => document.body.removeChild(iframe), 2000);
-            }, 600);
+            }, 1200);
         }
 
         async function confirmarAgendamentoEGerar() {
             if (!dadosCadastroTemporario) return;
             
-            const termoAceito = document.getElementById('chk_termo_aceito').checked;
+            // Lê de qualquer checkbox visível (desktop ou mobile)
+            const chkDesktop = document.getElementById('chk_termo_aceito_desktop');
+            const chkMobile = document.getElementById('chk_termo_aceito');
+            const termoAceito = (chkDesktop && chkDesktop.checked) || (chkMobile && chkMobile.checked);
             if (!termoAceito) {
                 showCustomAlert("O aceite do Termo de Consentimento (físico ou digital) é obrigatório.", "Atenção");
                 return;
@@ -1672,16 +2509,31 @@
 
                 if (result) {
                     let pacienteId = result.id || result.paciente_id;
+
+                    // BUG FIX #2: Fallback busca pacienteId com filtro de medico_id
+                    // para não retornar o paciente errado em clínicas multi-tenant.
+                    // Também trocado .single() por .maybeSingle() para não lançar
+                    // exceção quando nenhuma linha é encontrada.
                     if (!pacienteId && window.supabaseClient) {
-                         const { data: fetchPac } = await window.supabaseClient
+                        const medicoIdFallback = window.getMedicoId ? window.getMedicoId() : null;
+                        const query = window.supabaseClient
                             .from('pacientes')
                             .select('id')
                             .eq('nome', data.nome)
                             .eq('telefone', data.telefone)
                             .order('created_at', { ascending: false })
-                            .limit(1)
-                            .single();
-                         if (fetchPac) pacienteId = fetchPac.id;
+                            .limit(1);
+                        if (medicoIdFallback) query.eq('medico_id', medicoIdFallback);
+                        const { data: fetchPac, error: fetchErr } = await query.maybeSingle();
+                        if (fetchErr) console.warn('[recepcao] Fallback pacienteId falhou:', fetchErr);
+                        if (fetchPac) pacienteId = fetchPac.id;
+                    }
+
+                    // BUG FIX #3: Se mesmo após o fallback não temos o ID, logar
+                    // claramente e exibir aviso ao usuário em vez de falhar silenciosamente.
+                    if (!pacienteId) {
+                        console.error('[recepcao] pacienteId não retornado pelo webhook nem encontrado no fallback. Anamnese e Termo NÃO foram salvos.');
+                        showCustomAlert('O paciente foi criado, mas não foi possível registrar a Anamnese e o Termo de Consentimento automaticamente. Por favor, acesse o perfil do paciente para completar o cadastro.', 'Atenção: Registro Incompleto');
                     }
 
                     if (pacienteId && window.supabaseClient) {
@@ -1694,14 +2546,46 @@
                             let res1 = await window.supabaseClient.from('cicatrize_checklist_anamnese').insert(payloadAnamnese);
                             if (res1.error) throw new Error("Erro Anamnese: " + JSON.stringify(res1.error));
                             
-                            console.log('Inserindo Termo:', { paciente_id: pacienteId, aceito: termoAceito, usuario_registro: usrId });
+                            let auditMeta = {};
+                            if (window.currentConsentMode === 'digital' && window.signatureInstance) {
+                                auditMeta = {
+                                    ...window.signatureInstance.getMetadata(),
+                                    consent_mode: 'digital',
+                                    paciente_assinatura_base64: window.signatureInstance.toPNG()
+                                };
+                            } else {
+                                auditMeta = {
+                                    consent_mode: 'physical',
+                                    ip: window.signatureInstance ? window.signatureInstance.getMetadata().ip : 'Indisponível',
+                                    userAgent: navigator.userAgent,
+                                    resolution: `${window.screen.width}x${window.screen.height}`,
+                                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                                    timestamp: new Date().toISOString()
+                                };
+                            }
+
+                            const ip = auditMeta.ip || '0.0.0.0';
+
+                            console.log('Inserindo Termo:', { paciente_id: pacienteId, aceito: termoAceito, usuario_registro: usrId, ip_assinatura: ip });
                             let res2 = await window.supabaseClient.from('cicatrize_termos_consentimento').insert({
                                 paciente_id: pacienteId,
                                 aceito: termoAceito,
                                 usuario_registro: usrId,
-                                ambiente: 'cicatrize'
+                                ip_assinatura: ip,
+                                ambiente: 'cicatrize',
+                                metadata: auditMeta
                             });
                             if (res2.error) throw new Error("Erro Termo: " + JSON.stringify(res2.error));
+
+                            // Registra o log de auditoria do Termo de Consentimento
+                            console.log('Registrando log de auditoria para Termo...');
+                            await window.supabaseClient.from('cicatrize_auditoria_logs').insert({
+                                tipo_evento: 'TERMO_ACEITE',
+                                referencia_id: pacienteId,
+                                gerado_por: usrId,
+                                ip_origem: ip,
+                                metadata: auditMeta
+                            });
                             
                         } catch (errSupabase) {
                             console.error("Erro CRÍTICO ao inserir dados da Cicatrize:", errSupabase);
@@ -1709,8 +2593,13 @@
                         }
                     }
 
-                    statusDiv.textContent = "✅ Paciente cadastrado com sucesso!";
-                    statusDiv.className = "status-message success";
+                    statusDiv.textContent = "";
+                    statusDiv.className = "success";
+
+                    // SPRINT 2 · ITEM C: exibe tela de sucesso animada dentro do modal
+                    const nomePaciente = data.nome || 'Paciente';
+                    showSucessoCadastro(nomePaciente);
+
                     if (eTarget) eTarget.reset();
 
                     document.querySelectorAll('.selected-text').forEach(s => {
@@ -1738,12 +2627,63 @@
             fecharModalAnamnese(); // Limpa variaveis temporarias
         }
 
+        // === SPRINT 2 · ITEM C: Overlay de sucesso ===
+        // Exibe o overlay por cima do conteúdo do modal Termo com animação.
+        // Fecha automaticamente após 4 segundos ou quando o usuário clica em "Novo Cadastro".
+        function showSucessoCadastro(nomePaciente) {
+            const overlay = document.getElementById('overlay_sucesso_cadastro');
+            const nomeEl  = document.getElementById('sucesso_nome_paciente');
+            if (!overlay) return;
+
+            if (nomeEl) nomeEl.textContent = nomePaciente;
+            overlay.classList.remove('hidden');
+
+            // Reinicia a animação do ícone (remove e re-adiciona o elemento para reiniciar keyframes)
+            const icone = document.getElementById('icone_sucesso');
+            if (icone) {
+                icone.style.animation = 'none';
+                requestAnimationFrame(() => {
+                    icone.style.animation = 'popIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both';
+                });
+            }
+
+            // Auto-fechar e limpar após 4 segundos
+            setTimeout(() => fecharOverlaySucesso(), 4000);
+        }
+
+        function fecharOverlaySucesso() {
+            const overlay = document.getElementById('overlay_sucesso_cadastro');
+            if (overlay) overlay.classList.add('hidden');
+            fecharModalTermo();
+            fecharModalAnamnese();
+            // Restaura os checkboxes e botões para o estado inicial (pronto para novo cadastro)
+            ['chk_termo_aceito', 'chk_termo_aceito_desktop'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) { el.checked = false; el.dispatchEvent(new Event('change', { bubbles: true })); }
+            });
+        }
+
+        // === SPRINT 2 · ITEM D: Voltar para Anamnese ===
+        // Fecha o Modal Termo e reabre a Anamnese preservando todos os dados
+        // preenchidos (dadosCadastroTemporario continua em memória).
+        function voltarParaAnamnese() {
+            document.getElementById('modalTermoConsentimento').classList.add('hidden');
+            document.getElementById('modalChecklistAnamnese').classList.remove('hidden');
+            // Garante que o overlay de sucesso não fique visível ao retornar
+            const overlay = document.getElementById('overlay_sucesso_cadastro');
+            if (overlay) overlay.classList.add('hidden');
+        }
+
         document.getElementById('formCadastro').addEventListener('submit', async (e) => {
             e.preventDefault();
             const statusDiv = document.getElementById('statusCadastro');
 
             const formData = new FormData(e.target);
             const data = Object.fromEntries(formData.entries());
+
+            if (data.nome) {
+                data.nome = formatTitleCase(data.nome);
+            }
 
             if (!data.nome || !data.data_nascimento || !data.telefone) {
                 statusDiv.textContent = "⚠️ Preencha os campos obrigatórios (*)";
@@ -1756,6 +2696,16 @@
             if (data.data_nascimento && data.data_nascimento.includes('/')) {
                 const parts = data.data_nascimento.split('/');
                 if (parts.length === 3) data.data_nascimento = `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
+
+            // BUG FIX #1: Remove campos de responsável vazios para não enviar
+            // strings vazias ao n8n (responsavel_nome= & responsavel_parentesco=)
+            // que podem causar erros silenciosos no workflow.
+            if (!data.responsavel_nome || data.responsavel_nome.trim() === '') {
+                delete data.responsavel_nome;
+            }
+            if (!data.responsavel_parentesco || data.responsavel_parentesco.trim() === '') {
+                delete data.responsavel_parentesco;
             }
 
             if (pacienteEmEdicao) {
@@ -1795,8 +2745,8 @@
                     const btnSubmit = document.querySelector('#formCadastro button[type="submit"]');
                     if (btnSubmit) {
                         btnSubmit.textContent = 'Cadastrar e Enviar para Fila';
-                        btnSubmit.classList.replace('bg-amber-500', 'bg-indigo-600');
-                        btnSubmit.classList.replace('hover:bg-amber-600', 'hover:bg-indigo-700');
+                        btnSubmit.classList.replace('bg-amber-500', 'bg-emerald-600');
+                        btnSubmit.classList.replace('hover:bg-amber-600', 'hover:bg-emerald-700');
                     }
                     document.querySelectorAll('.selected-text').forEach(s => {
                         s.textContent = 'Selecione';
@@ -1844,13 +2794,290 @@
         document.querySelectorAll('#tipo_pele_group .tipo-pele-opt').forEach(label => {
             label.addEventListener('click', () => {
                 document.querySelectorAll('#tipo_pele_group .tipo-pele-opt').forEach(l => {
-                    l.classList.remove('bg-indigo-100','border-indigo-400','text-indigo-800');
+                    l.classList.remove('bg-emerald-100','border-emerald-400','text-emerald-800');
                     l.classList.add('bg-slate-50','border-slate-200');
                 });
                 label.classList.remove('bg-slate-50','border-slate-200');
-                label.classList.add('bg-indigo-100','border-indigo-400','text-indigo-800');
+                label.classList.add('bg-emerald-100','border-emerald-400','text-emerald-800');
             });
         });
+
+        // === SPRINT 1 · ITEM B + FIX iOS + SPRINT 3 · ITEM E (Toggle): Checkboxes do Termo ===
+        (function() {
+            const chkMobile    = document.getElementById('chk_termo_aceito');
+            const chkDesktop   = document.getElementById('chk_termo_aceito_desktop');
+            const labelMobile  = document.getElementById('label_termo_aceito_mobile');
+            const labelDesktop = document.getElementById('label_termo_aceito');
+            const btnMobile    = document.getElementById('btn_efetivar_mobile');
+            const btnDesktop   = document.getElementById('btn_efetivar_desktop');
+
+            // SPRINT 3 · ITEM E: Anima a pill do toggle e o knob deslizante.
+            // A pill e o knob estão dentro do label — buscamos pelo label pai.
+            function animateToggle(label, checked, isMobile) {
+                if (!label) return;
+                const pill  = label.querySelector('.toggle-pill');
+                const knob  = label.querySelector('.toggle-knob');
+                if (!pill || !knob) return;
+
+                const offset = isMobile
+                    ? `${54 - 24 - 3}px`   // width(54) - knob(24) - left(3)
+                    : `${42 - 18 - 3}px`;   // width(42) - knob(18) - left(3)
+
+                if (checked) {
+                    pill.style.background = '#059669';  // emerald-600
+                    knob.style.transform  = `translateX(${offset})`;
+                    knob.style.boxShadow  = isMobile
+                        ? '0 2px 6px rgba(5,150,105,0.4)'
+                        : '0 1px 4px rgba(5,150,105,0.35)';
+                } else {
+                    pill.style.background = document.documentElement.classList.contains('dark') ? '#475569' : '#cbd5e1';
+                    knob.style.transform  = 'translateX(0)';
+                    knob.style.boxShadow  = isMobile
+                        ? '0 2px 4px rgba(0,0,0,0.2)'
+                        : '0 1px 3px rgba(0,0,0,0.25)';
+                }
+            }
+
+            // MutationObserver to update toggle switches background color on dark mode changes
+            const observer = new MutationObserver(() => {
+                if (chkMobile && labelMobile) animateToggle(labelMobile, chkMobile.checked, true);
+                if (chkDesktop && labelDesktop) animateToggle(labelDesktop, chkDesktop.checked, false);
+            });
+            observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
+            function syncBtnState(chk, btn, label, isMobile) {
+                if (!btn || !chk) return;
+                const checked = chk.checked;
+
+                // --- Label (borda e fundo) ---
+                if (label) {
+                    if (checked) {
+                        label.classList.remove(isMobile ? 'border-emerald-300' : 'border-emerald-200', 'dark:border-emerald-800/60', 'dark:bg-emerald-950/20');
+                        label.classList.add('border-emerald-500', 'bg-emerald-100', 'dark:border-emerald-500', 'dark:bg-emerald-950/40');
+                    } else {
+                        label.classList.remove('border-emerald-500', 'bg-emerald-100', 'dark:border-emerald-500', 'dark:bg-emerald-950/40');
+                        label.classList.add(isMobile ? 'border-emerald-300' : 'border-emerald-200', 'dark:border-emerald-800/60', 'dark:bg-emerald-950/20');
+                    }
+                }
+
+                // --- Toggle visual (Sprint 3 E) ---
+                animateToggle(label, checked, isMobile);
+
+                // --- Botão (delegado para checkCanEfetivar) ---
+                if (window.checkCanEfetivar) {
+                    window.checkCanEfetivar();
+                }
+            }
+
+            // --- Listener MOBILE ---
+            if (chkMobile) {
+                chkMobile.addEventListener('change', () => syncBtnState(chkMobile, btnMobile, labelMobile, true));
+                // FIX iOS: o input tem classe sr-only então o clique sempre chega no label.
+                // Fazemos o toggle manualmente.
+                if (labelMobile) {
+                    labelMobile.addEventListener('click', (e) => {
+                        if (e.target === chkMobile) return;
+                        e.preventDefault();
+                        chkMobile.checked = !chkMobile.checked;
+                        chkMobile.dispatchEvent(new Event('change', { bubbles: true }));
+                    });
+                }
+            }
+
+            // --- Listener DESKTOP ---
+            if (chkDesktop) {
+                chkDesktop.addEventListener('change', () => syncBtnState(chkDesktop, btnDesktop, labelDesktop, false));
+                if (labelDesktop) {
+                    labelDesktop.addEventListener('click', (e) => {
+                        if (e.target === chkDesktop) return;
+                        e.preventDefault();
+                        chkDesktop.checked = !chkDesktop.checked;
+                        chkDesktop.dispatchEvent(new Event('change', { bubbles: true }));
+                    });
+                }
+            }
+        })();
+
+        // === SPRINT 3 · ITEM F: Contador de condições na Anamnese ===
+        // Atualiza os badges "X condições marcadas" (desktop + mobile) em tempo real.
+        (function() {
+            const modalAnamnese = document.getElementById('modalChecklistAnamnese');
+            if (!modalAnamnese) return;
+
+            // Desktop e mobile têm IDs separados para evitar duplicatas
+            const desktopEl  = document.getElementById('contador_condicoes_desktop');
+            const mobileEl   = document.getElementById('contador_condicoes_mobile');
+            const desktopTxt = document.getElementById('contador_condicoes_texto_desktop');
+            const mobileTxt  = document.getElementById('contador_condicoes_texto_mobile');
+
+            function setEstado(el, txt, marcados, shortLabel) {
+                if (!el || !txt) return;
+                if (marcados === 0) {
+                    txt.textContent = shortLabel ? 'Nenhuma' : 'Nenhuma condição marcada';
+                    el.classList.remove('bg-emerald-100', 'text-emerald-700', 'border-emerald-300');
+                    el.classList.add('bg-slate-100', 'text-slate-500', 'border-slate-200');
+                } else {
+                    const sufixo = marcados === 1 ? 'condição' : 'condições';
+                    txt.textContent = `${marcados} ${sufixo}`;
+                    el.classList.remove('bg-slate-100', 'text-slate-500', 'border-slate-200');
+                    el.classList.add('bg-emerald-100', 'text-emerald-700', 'border-emerald-300');
+                }
+            }
+
+            function atualizarContador() {
+                const marcados = Array.from(
+                    modalAnamnese.querySelectorAll('input[type="checkbox"]')
+                ).filter(c => c.checked).length;
+                // Desktop: texto curto (espaço limitado); Mobile: texto completo
+                setEstado(desktopEl, desktopTxt, marcados, true);
+                setEstado(mobileEl,  mobileTxt,  marcados, false);
+            }
+
+            modalAnamnese.querySelectorAll('input[type="checkbox"]').forEach(chk => {
+                chk.addEventListener('change', atualizarContador);
+            });
+
+            // Reseta ao fechar o modal
+            const observer = new MutationObserver(() => {
+                if (modalAnamnese.classList.contains('hidden')) atualizarContador();
+            });
+            observer.observe(modalAnamnese, { attributes: true, attributeFilter: ['class'] });
+        })();
+
+        // === SPRINT 1 · ITEM G: Ver Termo em Nova Aba (mobile-friendly) ===
+        // Em vez de chamar window.print() (que no iOS abre um sheet confuso),
+        // geramos um HTML completo via Blob URL e abrimos em nova aba.
+        // O usuário pode então usar o botão ⬆️ de compartilhamento do Safari
+        // para "Salvar em Arquivos", imprimir, enviar por WhatsApp, etc.
+        function verTermoMobile() {
+            const termoEl = document.getElementById('termo-imprimir');
+            if (!termoEl) return;
+
+            // === Sincroniza assinaturas antes de capturar (igual a imprimirTermo) ===
+            const imgPac = document.getElementById('assinatura-paciente-img');
+            if (window.currentConsentMode === 'digital') {
+                let pngData = null;
+                if (window.signatureInstance && !window.signatureInstance.isEmpty()) {
+                    pngData = window.signatureInstance.toPNG();
+                } else if (window._pacienteAssinaturaData) {
+                    pngData = window._pacienteAssinaturaData;
+                }
+                
+                if (imgPac && pngData) {
+                    imgPac.src = pngData;
+                    imgPac.style.display = 'block';
+                } else if (imgPac) {
+                    imgPac.src = '';
+                    imgPac.style.display = 'none';
+                }
+            } else {
+                if (imgPac) {
+                    imgPac.src = '';
+                    imgPac.style.display = 'none';
+                }
+            }
+            const imgMed = document.getElementById('assinatura-medico-img');
+            if (window.currentConsentMode === 'digital' && window._medicoAssinaturaData) {
+                if (imgMed) {
+                    imgMed.src = window._medicoAssinaturaData;
+                    imgMed.style.display = 'block';
+                }
+            } else {
+                if (imgMed) {
+                    imgMed.src = '';
+                    imgMed.style.display = 'none';
+                }
+            }
+
+            // Clone limpo sem onerror (igual a imprimirTermo)
+            const termoClone = termoEl.cloneNode(true);
+            termoClone.querySelectorAll('img').forEach(img => {
+                img.removeAttribute('onerror');
+                if (window.currentConsentMode === 'digital') {
+                    if (img.id === 'assinatura-paciente-img') {
+                        let pngData = null;
+                        if (window.signatureInstance && !window.signatureInstance.isEmpty()) {
+                            pngData = window.signatureInstance.toPNG();
+                        } else if (window._pacienteAssinaturaData) {
+                            pngData = window._pacienteAssinaturaData;
+                        }
+                        
+                        if (pngData) {
+                            img.src = pngData;
+                            img.style.display = 'block';
+                        } else {
+                            img.style.display = 'none';
+                        }
+                    } else if (img.id === 'assinatura-medico-img') {
+                        if (window._medicoAssinaturaData) {
+                            img.src = window._medicoAssinaturaData;
+                            img.style.display = 'block';
+                        } else {
+                            img.style.display = 'none';
+                        }
+                    } else {
+                        const originalImg = termoEl.querySelector('#' + img.id);
+                        if (originalImg && originalImg.src && !originalImg.src.endsWith('#') && originalImg.src !== window.location.href) {
+                            img.src = originalImg.src;
+                            img.style.display = 'block';
+                        } else {
+                            img.style.display = 'none';
+                        }
+                    }
+                } else {
+                    // Modo físico: oculta as assinaturas na impressão
+                    img.style.display = 'none';
+                    img.src = '';
+                }
+            });
+            const conteudo = termoClone.innerHTML;
+
+            const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Termo de Consentimento - Clínica Cicatrize</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: Georgia, 'Times New Roman', serif;
+            color: #0f172a;
+            background: #fff;
+            padding: 32px 24px;
+            max-width: 780px;
+            margin: 0 auto;
+            line-height: 1.7;
+            font-size: 14px;
+        }
+        h2, h3 { font-family: Georgia, serif; }
+        p { margin-bottom: 16px; text-align: justify; }
+        strong { font-weight: 700; }
+        @media print {
+            body { padding: 20px 16px; }
+            @page { margin: 20mm; }
+        }
+    </style>
+</head>
+<body>${conteudo}</body>
+</html>`;
+
+            try {
+                const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+                const url  = URL.createObjectURL(blob);
+                const aba  = window.open(url, '_blank');
+                // Libera a URL do blob após 2 minutos (tempo suficiente para o navegador carregar)
+                setTimeout(() => URL.revokeObjectURL(url), 120000);
+                if (!aba) {
+                    // Bloqueador de pop-up ativado — fallback: avisa o usuário
+                    alert('Por favor, permita pop-ups para este site e tente novamente.');
+                }
+            } catch (err) {
+                console.error('[verTermoMobile] Erro ao gerar Blob URL:', err);
+                // Fallback para impressão normal caso o Blob falhe
+                imprimirTermo();
+            }
+        }
     </script>
 </body>
 
